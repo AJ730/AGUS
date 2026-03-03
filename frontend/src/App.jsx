@@ -22,6 +22,7 @@ export default function App() {
   const viewerRef = useRef(null)
   const dataSourcesRef = useRef({})
   const intervalsRef = useRef({})
+  const retryCountRef = useRef({})
 
   const [loading, setLoading] = useState(true)
   const [loadingStatus, setLoadingStatus] = useState('CONNECTING TO BACKEND...')
@@ -207,7 +208,7 @@ export default function App() {
             if (ready > 0) {
               setLoadingStatus(`LOADING OSINT FEEDS... ${ready}/${total} SOURCES`)
             }
-            if (ready >= 5) {
+            if (ready >= 18) {
               loadingDismissed = true
               setLoading(false)
               return
@@ -263,6 +264,17 @@ export default function App() {
 
     // Request render after entity changes (needed for requestRenderMode)
     if (viewerRef.current) viewerRef.current.scene.requestRender()
+
+    // If backend is still prefetching (0 items), retry in 10s (up to 2 min)
+    if (items.length === 0) {
+      const retries = retryCountRef.current[layerKey] || 0
+      if (retries < 12) {
+        retryCountRef.current[layerKey] = retries + 1
+        setTimeout(() => loadLayer(layerKey), 10000)
+      }
+      return
+    }
+    retryCountRef.current[layerKey] = 0
 
     // Update layer count in state
     setLayerState(prev => ({

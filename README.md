@@ -4,9 +4,7 @@ Real-time global intelligence platform aggregating 24 free OSINT data sources on
 
 ## Demo
 
-<video src="demo.mp4" controls width="100%"></video>
-
-[Watch demo video](demo.mp4)
+![Demo](demo.gif)
 
 ## Architecture
 
