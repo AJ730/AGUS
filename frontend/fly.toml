@@ -1,0 +1,25 @@
+# Agus OSINT Frontend — Fly.io Configuration
+# Deploy: cd frontend && fly deploy
+#
+# First time:
+#   fly apps create agus-frontend
+#   fly deploy
+
+app = "agus-frontend"
+primary_region = "iad"
+
+[build]
+  [build.args]
+    VITE_API_BASE = "https://agus-backend.fly.dev/api"
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

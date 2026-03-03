@@ -12,7 +12,7 @@ import BottomBar from './components/BottomBar'
 import AnalyticsCards from './components/AnalyticsCards'
 import NewsTicker from './components/NewsTicker'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 // Analytics layer keys -- layers tracked in the analytics cards
 const ANALYTICS_KEYS = ['flights', 'conflicts', 'earthquakes', 'fires', 'news', 'threat_intel', 'missile_tests']

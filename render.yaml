@@ -1,0 +1,41 @@
+# Agus OSINT — Render.com Blueprint
+# Deploy: Push to GitHub, then connect via https://render.com/deploy
+#
+# NOTE: Free tier spins down after 15min inactivity.
+# Backend takes ~2min to prefetch on cold start.
+# Use UptimeRobot (free) to ping /api/health every 14min to keep alive.
+
+services:
+  - type: web
+    name: agus-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # Optional API keys — set in Render dashboard
+      - key: ACLED_EMAIL
+        sync: false
+      - key: ACLED_PASSWORD
+        sync: false
+      - key: ABUSEIPDB_API_KEY
+        sync: false
+      - key: WINDY_API_KEY
+        sync: false
+      - key: OPENAIP_API_KEY
+        sync: false
+      - key: OTX_API_KEY
+        sync: false
+
+  - type: web
+    name: agus-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    envVars:
+      - key: VITE_API_BASE
+        value: https://agus-backend.onrender.com/api
