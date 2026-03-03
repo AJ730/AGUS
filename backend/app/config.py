@@ -141,4 +141,8 @@ LAYER_CONFIG: dict[str, dict] = {
         "ttl": 86400,
         "source_url": "http://rx.linkfanel.net/kiwisdr_com.js (KiwiSDR directory)",
     },
+    "missile_tests": {
+        "ttl": 600,
+        "source_url": "https://acleddata.com/api/acled/read (live strikes/bombings)",
+    },
 }

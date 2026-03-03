@@ -205,6 +205,11 @@ async def signals(request: Request):
     return await _layer_response(request, "signals")
 
 
+@router.get("/missile_tests")
+async def missile_tests(request: Request):
+    return await _layer_response(request, "missile_tests")
+
+
 # ---------------------------------------------------------------------------
 # Flight detail endpoint (per-icao24 with track)
 # ---------------------------------------------------------------------------

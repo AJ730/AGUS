@@ -18,6 +18,7 @@ export const LAYERS = {
   threat_intel:   { label: 'Threat Intel',    group: 'Security',        color: '#f43f5e', refreshMs: 600000 },
   military_bases: { label: 'Military Bases',  group: 'Security',        color: '#16a34a', refreshMs: 3600000 },
   airspace:       { label: 'Airspace',        group: 'Security',        color: '#dc2626', refreshMs: 3600000 },
+  missile_tests:  { label: 'Strikes/Bombs',  group: 'Security',        color: '#dc2626', refreshMs: 600000 },
   refugees:       { label: 'Displacement',    group: 'Humanitarian',    color: '#06b6d4', refreshMs: 3600000 },
   sanctions:      { label: 'Sanctions',       group: 'Humanitarian',    color: '#d97706', refreshMs: 3600000 },
   satellites:     { label: 'Satellites',       group: 'Space',           color: '#e2e8f0', refreshMs: 30000 },
@@ -40,7 +41,7 @@ export const PRESETS = [
 ]
 
 // Default layers that are visible on initial load
-export const DEFAULT_VISIBLE_LAYERS = ['flights', 'conflicts', 'fires', 'earthquakes', 'cctv', 'news']
+export const DEFAULT_VISIBLE_LAYERS = ['flights', 'conflicts', 'fires', 'earthquakes', 'cctv', 'news', 'missile_tests']
 
 // Group layers by their group property
 export function groupLayers(layers) {

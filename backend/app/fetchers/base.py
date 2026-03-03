@@ -73,15 +73,75 @@ class BaseFetcher(ABC):
     @staticmethod
     async def _gdelt(client: httpx.AsyncClient, query: str,
                      timespan: str = "7D", maxrows: int = 500) -> list:
-        """Fetch GDELT GEO features (HTTP for Docker compatibility)."""
+        """Fetch GDELT features: try GEO API first, fall back to DOC API."""
         from urllib.parse import quote
+        from ..utils import COUNTRY_COORDS
         encoded_query = quote(query, safe="")
-        url = (f"http://api.gdeltproject.org/api/v2/geo/geo"
-               f"?query={encoded_query}&format=GeoJSON"
-               f"&TIMESPAN={timespan}&maxrows={maxrows}")
-        resp = await client.get(url, timeout=30.0)
+
+        # Try GEO API first (returns geolocated features)
+        geo_url = (f"http://api.gdeltproject.org/api/v2/geo/geo"
+                   f"?query={encoded_query}&format=GeoJSON"
+                   f"&TIMESPAN={timespan}&maxrows={maxrows}")
+        try:
+            resp = await client.get(geo_url, timeout=30.0)
+            if resp.status_code == 200:
+                features = resp.json().get("features") or []
+                if features:
+                    return features
+        except Exception:
+            pass
+
+        # Fallback: DOC API with fresh client (avoids stale connection pool)
+        async with httpx.AsyncClient(timeout=30.0) as doc_client:
+            resp = await doc_client.get(
+                "http://api.gdeltproject.org/api/v2/doc/doc",
+                params={
+                    "query": f"{query} sourcelang:english",
+                    "mode": "ArtList",
+                    "maxrecords": str(min(maxrows, 250)),
+                    "format": "json",
+                    "TIMESPAN": timespan,
+                },
+            )
         resp.raise_for_status()
-        return resp.json().get("features") or []
+        articles = resp.json().get("articles") or []
+
+        # Build sorted country name list for title geocoding
+        country_names = sorted(
+            (k for k in COUNTRY_COORDS if len(k) > 2),
+            key=len, reverse=True,
+        )
+
+        def _geocode_article(art: dict):
+            """Geocode by title content first, then fallback to sourcecountry."""
+            title = (art.get("title") or "").lower()
+            for name in country_names:
+                if name.lower() in title:
+                    return name, COUNTRY_COORDS[name]
+            sc = (art.get("sourcecountry") or "").strip()
+            coords = COUNTRY_COORDS.get(sc) or COUNTRY_COORDS.get(sc.lower())
+            if coords:
+                return sc, coords
+            return None, None
+
+        features = []
+        for art in articles:
+            country, coords = _geocode_article(art)
+            if not coords:
+                continue
+            lat, lon = coords
+            features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                "properties": {
+                    "name": art.get("title", ""),
+                    "url": art.get("url", ""),
+                    "date": art.get("seendate", ""),
+                    "source": art.get("domain", "GDELT"),
+                    "country": country,
+                },
+            })
+        return features
 
     @staticmethod
     async def _overpass(client: httpx.AsyncClient, query: str) -> list:

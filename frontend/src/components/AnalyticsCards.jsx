@@ -8,6 +8,7 @@ const ANALYTICS_METRICS = [
   { key: 'fires',       label: 'Fires',       color: '#f97316' },
   { key: 'news',        label: 'News',        color: '#10b981' },
   { key: 'threat_intel', label: 'Threats',   color: '#f43f5e' },
+  { key: 'missile_tests', label: 'Missiles', color: '#dc2626' },
 ]
 
 const AnalyticsCards = React.memo(function AnalyticsCards({ analytics }) {

@@ -31,6 +31,7 @@ from .fetchers import (
     FireFetcher,
     FlightFetcher,
     MilitaryBaseFetcher,
+    MissileTestFetcher,
     NOTAMFetcher,
     NuclearFetcher,
     PiracyFetcher,
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     registry.register("news", NewsFetcher())
     registry.register("threat_intel", ThreatIntelFetcher())
     registry.register("signals", SignalsFetcher())
+    registry.register("missile_tests", MissileTestFetcher())
 
     # --- HTTP client ref (created in lifespan) ---
     http_client_ref: dict = {"client": None}
@@ -137,7 +139,7 @@ def create_app() -> FastAPI:
         """Stagger GDELT-dependent sources to avoid rate limiting."""
         await cache.get("cyber", fetcher_fns["cyber"])
         await cache.get("threat_intel", fetcher_fns["threat_intel"])
-        for name in ["conflicts", "cctv", "terrorism", "piracy", "news"]:
+        for name in ["conflicts", "cctv", "terrorism", "piracy", "news", "missile_tests"]:
             await cache.get(name, fetcher_fns[name])
             await asyncio.sleep(3.0)
 

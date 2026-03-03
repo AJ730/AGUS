@@ -105,5 +105,5 @@ class CCTVFetcher(BaseFetcher):
 
     async def fetch(self, client: httpx.AsyncClient) -> List[dict]:
         return await self._try_sources(
-            client, self._from_windy, self._from_gdelt, self._from_overpass,
+            client, self._from_windy, self._from_overpass, self._from_gdelt,
         )

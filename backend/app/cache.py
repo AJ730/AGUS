@@ -128,7 +128,8 @@ class CacheManager:
                  "threat_intel", "signals"]
         # Wave 2: GDELT-dependent sources (stagger to avoid rate limits)
         wave2 = ["events", "conflicts", "cctv", "terrorism", "piracy",
-                 "airspace", "notams", "military_bases", "news"]
+                 "airspace", "notams", "military_bases", "news",
+                 "missile_tests"]
 
         tasks1 = [self.get(n, fetcher_registry[n]) for n in wave1
                   if n in self._slots and n in fetcher_registry]

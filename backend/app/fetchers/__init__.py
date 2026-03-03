@@ -25,6 +25,7 @@ from .submarines import SubmarineFetcher
 from .carriers import CarrierFetcher
 from .threat_intel import ThreatIntelFetcher
 from .signals import SignalsFetcher
+from .missile_tests import MissileTestFetcher
 
 __all__ = [
     "BaseFetcher", "FetcherRegistry",
@@ -34,5 +35,5 @@ __all__ = [
     "TerrorismFetcher", "RefugeeFetcher", "PiracyFetcher", "AirspaceFetcher",
     "SanctionsFetcher", "CyberFetcher", "MilitaryBaseFetcher",
     "AirportFetcher", "NOTAMFetcher", "SubmarineFetcher", "CarrierFetcher",
-    "ThreatIntelFetcher", "SignalsFetcher",
+    "ThreatIntelFetcher", "SignalsFetcher", "MissileTestFetcher",
 ]

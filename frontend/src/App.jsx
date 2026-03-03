@@ -15,7 +15,7 @@ import NewsTicker from './components/NewsTicker'
 const API_BASE = '/api'
 
 // Analytics layer keys -- layers tracked in the analytics cards
-const ANALYTICS_KEYS = ['flights', 'conflicts', 'earthquakes', 'fires', 'news', 'threat_intel']
+const ANALYTICS_KEYS = ['flights', 'conflicts', 'earthquakes', 'fires', 'news', 'threat_intel', 'missile_tests']
 
 export default function App() {
   const containerRef = useRef(null)
@@ -40,7 +40,7 @@ export default function App() {
   const [flightPanel, setFlightPanel] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState({})
-  const [analytics, setAnalytics] = useState({ flights: 0, conflicts: 0, earthquakes: 0, fires: 0, news: 0, threat_intel: 0 })
+  const [analytics, setAnalytics] = useState({ flights: 0, conflicts: 0, earthquakes: 0, fires: 0, news: 0, threat_intel: 0, missile_tests: 0 })
   const [squawkAlerts, setSquawkAlerts] = useState([])
   const [cameraAlt, setCameraAlt] = useState(0)
   const [newsItems, setNewsItems] = useState([])
@@ -186,6 +186,8 @@ export default function App() {
           const cctv = picked.id._cctvData
           if (cctv.stream_url) {
             window.open(cctv.stream_url, '_blank', 'width=800,height=600')
+          } else if (isFinite(cctv.lat) && isFinite(cctv.lon)) {
+            window.open(`https://www.google.com/maps/@${cctv.lat},${cctv.lon},3a,75y,0h,90t/data=!3m1!1e3`, '_blank')
           }
         }
       }

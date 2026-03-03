@@ -6,7 +6,7 @@ import {
   getSatelliteIcon, getNuclearIcon, getCctvIcon, getPiracyIcon,
   getTerrorismIcon, getEarthquakeIcon, getFireIcon, getWeatherAlertIcon,
   getRefugeeIcon, getCyberIcon, getSanctionIcon,
-  getThreatIntelIcon, getSignalsIcon, getMilitaryVesselIcon,
+  getThreatIntelIcon, getSignalsIcon, getMilitaryVesselIcon, getMissileIcon,
 } from './icons'
 
 // Build entities for a given layer from raw data items.
@@ -210,11 +210,11 @@ function buildCctv(ds, props, geom, lon, lat, cfg) {
       Country: props.country || '',
       Operator: props.operator || '',
       Source: props.source || 'OSM',
-      Stream: props.stream_url ? 'Click to open' : 'No stream',
+      Stream: (props.stream_url || props.url) ? 'Click to view' : 'Click for Street View',
       Coords: lat.toFixed(4) + ', ' + lon.toFixed(4),
     },
   }
-  entity._cctvData = { name: camName, stream_url: props.stream_url || props.url }
+  entity._cctvData = { name: camName, stream_url: props.stream_url || props.url, lat, lon }
 }
 
 function buildFire(ds, props, geom, lon, lat, cfg) {
@@ -770,6 +770,50 @@ function buildSignals(ds, props, geom, lon, lat, cfg) {
   }
 }
 
+function buildMissileTest(ds, props, geom, lon, lat, cfg) {
+  const etype = (props.type || '').toLowerCase()
+  const color = etype === 'airstrike' || etype === 'drone_strike' ? '#ef4444'
+    : etype === 'missile_strike' || etype === 'missile_test' ? '#dc2626'
+    : etype === 'nuclear_test' ? '#f59e0b'
+    : etype === 'shelling' ? '#f97316'
+    : etype === 'bombing' || etype === 'suicide_bombing' ? '#b91c1c'
+    : '#dc2626'
+  const fatalities = props.fatalities || 0
+  const iconSize = fatalities > 10 ? 32 : fatalities > 0 ? 28 : 24
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getMissileIcon(color, 32),
+      width: iconSize,
+      height: iconSize,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.6),
+    },
+  })
+
+  const typeLabel = (props.sub_type || props.type || 'Strike').replace(/_/g, ' ')
+  const rows = {
+    Type: typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1),
+    Date: props.date || 'N/A',
+    Country: props.country || '',
+    Region: props.region || '',
+    Actor: props.actor || '',
+    Target: props.target || '',
+  }
+  if (fatalities > 0) rows.Fatalities = fatalities.toString()
+  rows.Source = props.source || 'OSINT'
+  if (props.url) rows.Article = 'Click to read'
+
+  entity._tooltipData = {
+    title: '\uD83D\uDCA5 ' + (props.name || typeLabel || 'Strike Event').slice(0, 80),
+    rows,
+  }
+  if (props.url) {
+    entity._cctvData = { name: props.name, stream_url: props.url }
+  }
+}
+
 function buildDefault(ds, props, geom, lon, lat, cfg) {
   if (!isFinite(lon) || !isFinite(lat)) return
   ds.entities.add({
@@ -809,4 +853,5 @@ const ENTITY_BUILDERS = {
   carriers: buildCarrier,
   threat_intel: buildThreatIntel,
   signals: buildSignals,
+  missile_tests: buildMissileTest,
 }

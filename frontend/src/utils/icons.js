@@ -232,44 +232,69 @@ export function getNuclearIcon(color = '#84cc16', size = 32) {
   })
 }
 
-// ==================== 7. CCTV (camera) ====================
+// ==================== 7. CCTV (wall-mounted surveillance camera) ====================
 export function getCctvIcon(color = '#22c55e', size = 32) {
   return cached('cctv', color, size, (ctx, cx, cy, s) => {
     applyShadow(ctx, s)
+    ctx.fillStyle = 'rgba(200,200,200,0.9)'
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Wall mount plate (top-right, the wall anchor)
+    ctx.fillRect(cx + 8 * s, cy - 12 * s, 5 * s, 8 * s)
+    ctx.strokeRect(cx + 8 * s, cy - 12 * s, 5 * s, 8 * s)
+    clearShadow(ctx)
+    // Mount arm (angled bracket from wall down to camera)
+    ctx.strokeStyle = 'rgba(180,180,180,0.9)'
+    ctx.lineWidth = 2 * s
+    ctx.beginPath()
+    ctx.moveTo(cx + 10 * s, cy - 5 * s)
+    ctx.lineTo(cx + 2 * s, cy + 2 * s)
+    ctx.stroke()
+    // Support strut (triangle brace)
+    ctx.strokeStyle = 'rgba(160,160,160,0.7)'
+    ctx.lineWidth = 1 * s
+    ctx.beginPath()
+    ctx.moveTo(cx + 10 * s, cy - 1 * s)
+    ctx.lineTo(cx + 5 * s, cy + 1 * s)
+    ctx.stroke()
+    applyShadow(ctx, s)
+    // Camera body (horizontal cylinder shape — rounded rect)
     ctx.fillStyle = color
     ctx.strokeStyle = 'rgba(0,0,0,0.6)'
-    ctx.lineWidth = 0.7 * s
-    // Camera body
+    ctx.lineWidth = 0.8 * s
     ctx.beginPath()
-    ctx.roundRect(cx - 8 * s, cy - 5 * s, 13 * s, 10 * s, 2 * s)
+    ctx.roundRect(cx - 8 * s, cy - 1 * s, 14 * s, 7 * s, 2 * s)
     ctx.fill(); ctx.stroke()
     clearShadow(ctx)
-    // Lens/viewfinder triangle
-    ctx.fillStyle = color
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    // Camera hood/visor (top of body)
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'
     ctx.beginPath()
-    ctx.moveTo(cx + 5 * s, cy - 4 * s)
-    ctx.lineTo(cx + 12 * s, cy - 7 * s)
-    ctx.lineTo(cx + 12 * s, cy + 7 * s)
-    ctx.lineTo(cx + 5 * s, cy + 4 * s)
+    ctx.moveTo(cx - 9 * s, cy - 1 * s)
+    ctx.lineTo(cx - 10 * s, cy - 3 * s)
+    ctx.lineTo(cx + 4 * s, cy - 3 * s)
+    ctx.lineTo(cx + 5 * s, cy - 1 * s)
     ctx.closePath()
-    ctx.fill(); ctx.stroke()
-    // Lens circle
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'
-    ctx.beginPath()
-    ctx.arc(cx - 1.5 * s, cy, 3 * s, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    // Lens at front (left side — camera points left)
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'
     ctx.beginPath()
-    ctx.arc(cx - 2.5 * s, cy - 1 * s, 1 * s, 0, Math.PI * 2)
+    ctx.arc(cx - 8 * s, cy + 2.5 * s, 2.5 * s, 0, Math.PI * 2)
     ctx.fill()
-    // Mount arm
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)'
-    ctx.lineWidth = 1.5 * s
+    // Lens highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'
     ctx.beginPath()
-    ctx.moveTo(cx - 2 * s, cy + 5 * s)
-    ctx.lineTo(cx - 2 * s, cy + 12 * s)
-    ctx.stroke()
+    ctx.arc(cx - 9 * s, cy + 1.5 * s, 0.8 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // Recording indicator LED (red dot on top-right of body)
+    ctx.fillStyle = '#ef4444'
+    ctx.beginPath()
+    ctx.arc(cx + 4 * s, cy + 0.5 * s, 1.2 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // LED glow
+    ctx.fillStyle = 'rgba(239,68,68,0.3)'
+    ctx.beginPath()
+    ctx.arc(cx + 4 * s, cy + 0.5 * s, 2.5 * s, 0, Math.PI * 2)
+    ctx.fill()
   })
 }
 
@@ -623,5 +648,61 @@ export function getSanctionIcon(color = '#d97706', size = 32) {
     ctx.arc(cx, cy, 12 * s, 0, Math.PI * 2)
     ctx.fill()
     ctx.globalAlpha = 1
+  })
+}
+
+// ==================== 19. MISSILE (missile with exhaust) ====================
+export function getMissileIcon(color = '#dc2626', size = 32) {
+  return cached('missile', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Nose cone (pointed top)
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - 14 * s)
+    ctx.lineTo(cx - 3 * s, cy - 7 * s)
+    ctx.lineTo(cx + 3 * s, cy - 7 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    // Cylindrical body
+    ctx.beginPath()
+    ctx.rect(cx - 3 * s, cy - 7 * s, 6 * s, 14 * s)
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Body stripe (band detail)
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'
+    ctx.fillRect(cx - 3 * s, cy - 2 * s, 6 * s, 2 * s)
+    // Fins (left)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.6 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 3 * s, cy + 3 * s)
+    ctx.lineTo(cx - 8 * s, cy + 8 * s)
+    ctx.lineTo(cx - 3 * s, cy + 7 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    // Fins (right)
+    ctx.beginPath()
+    ctx.moveTo(cx + 3 * s, cy + 3 * s)
+    ctx.lineTo(cx + 8 * s, cy + 8 * s)
+    ctx.lineTo(cx + 3 * s, cy + 7 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    // Exhaust flame (orange-yellow gradient)
+    const flameGrd = ctx.createLinearGradient(cx, cy + 7 * s, cx, cy + 14 * s)
+    flameGrd.addColorStop(0, '#fbbf24')
+    flameGrd.addColorStop(0.5, '#f97316')
+    flameGrd.addColorStop(1, 'rgba(239,68,68,0)')
+    ctx.fillStyle = flameGrd
+    ctx.beginPath()
+    ctx.moveTo(cx - 2.5 * s, cy + 7 * s)
+    ctx.lineTo(cx - 1 * s, cy + 14 * s)
+    ctx.lineTo(cx, cy + 11 * s)
+    ctx.lineTo(cx + 1 * s, cy + 14 * s)
+    ctx.lineTo(cx + 2.5 * s, cy + 7 * s)
+    ctx.closePath()
+    ctx.fill()
   })
 }

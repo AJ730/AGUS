@@ -64,10 +64,12 @@ class CarrierFetcher(BaseFetcher):
         return results
 
     async def _from_gdelt(self, client: httpx.AsyncClient) -> List[dict]:
-        query = '("aircraft carrier" OR "carrier strike group" OR "naval deployment")'
-        features = await self._gdelt(client, query, "30D", 200)
+        query = ('("aircraft carrier" OR "carrier strike group" OR '
+                 '"naval fleet" OR "warship" OR "destroyer deployed" OR '
+                 '"navy deployment" OR "naval task force")')
+        features = await self._gdelt(client, query, "30D", 300)
         return [{
-            "name": (f.get("properties") or {}).get("name", "Carrier Activity"),
+            "name": (f.get("properties") or {}).get("name", "Naval Activity"),
             "class": "", "operator": "",
             "home_port": "",
             "latitude": f["geometry"]["coordinates"][1],
