@@ -181,20 +181,18 @@ def create_app() -> FastAPI:
         app.state.flight_intel = intel
 
         # Pre-fetch in background so the server starts accepting connections immediately
-        # (Fly.io health checks need a response within 60s)
         async def _background_prefetch():
             logger.info("Pre-fetching all OSINT sources (background) ...")
             await cache.prefetch_all(fetcher_fns)
-            logger.info("Pre-fetch complete.")
+            logger.info("Pre-fetch complete — starting scheduler.")
+            # Start scheduler AFTER prefetch to avoid memory overlap
+            scheduler.add_job(_refresh_fast, "interval", seconds=30, id="fast")
+            scheduler.add_job(_refresh_medium, "interval", seconds=300, id="medium")
+            scheduler.add_job(_refresh_slow, "interval", seconds=1800, id="slow")
+            scheduler.add_job(_refresh_very_slow, "interval", seconds=21600, id="very_slow")
+            scheduler.start()
 
         prefetch_task = asyncio.create_task(_background_prefetch())
-
-        # Schedule periodic refreshes
-        scheduler.add_job(_refresh_fast, "interval", seconds=30, id="fast")
-        scheduler.add_job(_refresh_medium, "interval", seconds=300, id="medium")
-        scheduler.add_job(_refresh_slow, "interval", seconds=1800, id="slow")
-        scheduler.add_job(_refresh_very_slow, "interval", seconds=21600, id="very_slow")
-        scheduler.start()
         logger.info("Server ready — background prefetch in progress.")
 
         yield  # app is running

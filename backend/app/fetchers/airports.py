@@ -26,7 +26,10 @@ class AirportFetcher(BaseFetcher):
                 timeout=httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0),
             )
             resp.raise_for_status()
-            reader = csv.DictReader(io.StringIO(resp.text))
+            csv_text = resp.text
+            del resp
+            reader = csv.DictReader(io.StringIO(csv_text))
+            del csv_text
             results: List[dict] = []
             for row in reader:
                 apt_type = row.get("type", "")

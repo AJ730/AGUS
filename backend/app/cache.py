@@ -7,6 +7,7 @@ Thread-safe in-memory cache with per-slot TTL-based invalidation.
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import time
 from dataclasses import dataclass, field
@@ -128,22 +129,29 @@ class CacheManager:
         wave1a = ["earthquakes", "weather_alerts", "cyber", "refugees",
                   "threat_intel", "signals", "satellites"]
         # Wave 1b: Medium sources (Wikidata SPARQL, moderate size)
-        wave1b = ["vessels", "nuclear", "submarines", "carriers",
-                  "sanctions"]
-        # Wave 1c: Heavy sources (large CSVs, multiple API calls)
-        wave1c = ["fires", "airports", "flights"]
+        wave1b = ["vessels", "nuclear", "submarines", "carriers"]
+        # Wave 1c: Heavy sources (large CSVs, multiple API calls) -- sequential
+        wave1c = ["sanctions", "fires", "airports", "flights"]
         # Wave 2: GDELT-dependent sources (stagger to avoid rate limits)
         wave2 = ["events", "conflicts", "cctv", "terrorism", "piracy",
                  "airspace", "notams", "military_bases", "news",
                  "missile_tests"]
 
-        for label, wave in [("1a-quick", wave1a), ("1b-medium", wave1b),
-                            ("1c-heavy", wave1c)]:
+        for label, wave in [("1a-quick", wave1a), ("1b-medium", wave1b)]:
             tasks = [self.get(n, fetcher_registry[n]) for n in wave
                      if n in self._slots and n in fetcher_registry]
             await asyncio.gather(*tasks, return_exceptions=True)
             logger.info("Wave %s prefetch complete", label)
-            await asyncio.sleep(0.5)  # yield to event loop for health checks
+            gc.collect()
+            await asyncio.sleep(0.5)
+
+        # Wave 1c: heavy CSVs one at a time to limit peak memory
+        for name in wave1c:
+            if name in self._slots and name in fetcher_registry:
+                await self.get(name, fetcher_registry[name])
+                gc.collect()
+                await asyncio.sleep(1.0)
+        logger.info("Wave 1c-heavy prefetch complete")
 
         # Stagger GDELT sources with 2s delay between each
         for name in wave2:

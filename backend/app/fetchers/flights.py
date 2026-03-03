@@ -85,7 +85,9 @@ class FlightFetcher(BaseFetcher):
                     timeout=timeout,
                 )
                 resp.raise_for_status()
-                ac_list = resp.json().get("ac") or resp.json().get("aircraft") or []
+                data = resp.json()
+                ac_list = data.get("ac") or data.get("aircraft") or []
+                del data
                 results.extend(self._parse_adsb(ac_list, seen))
             except Exception as exc:
                 logger.warning("adsb.lol %s: %s", name, exc)

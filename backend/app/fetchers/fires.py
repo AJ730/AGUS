@@ -23,9 +23,14 @@ class FireFetcher(BaseFetcher):
         try:
             resp = await client.get(_URL, timeout=20.0)
             resp.raise_for_status()
-            reader = csv.DictReader(io.StringIO(resp.text))
+            csv_text = resp.text
+            del resp
+            reader = csv.DictReader(io.StringIO(csv_text))
+            del csv_text
             results: List[dict] = []
             for row in reader:
+                if len(results) >= 5000:
+                    break
                 try:
                     lat = float(row.get("latitude", 0))
                     lon = float(row.get("longitude", 0))
