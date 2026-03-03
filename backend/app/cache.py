@@ -120,21 +120,30 @@ class CacheManager:
         self,
         fetcher_registry: Dict[str, Callable[[], Coroutine[Any, Any, Any]]],
     ) -> None:
-        """Fetch sources in staggered waves to avoid rate-limiting."""
-        # Wave 1: Non-GDELT sources (can all run concurrently)
-        wave1 = ["flights", "fires", "vessels", "satellites", "earthquakes",
-                 "nuclear", "weather_alerts", "sanctions", "airports",
-                 "submarines", "carriers", "cyber", "refugees",
-                 "threat_intel", "signals"]
+        """Fetch sources in staggered waves to avoid rate-limiting.
+
+        Batched to avoid saturating the event loop so health checks can pass.
+        """
+        # Wave 1a: Quick API sources (small responses, fast)
+        wave1a = ["earthquakes", "weather_alerts", "cyber", "refugees",
+                  "threat_intel", "signals", "satellites"]
+        # Wave 1b: Medium sources (Wikidata SPARQL, moderate size)
+        wave1b = ["vessels", "nuclear", "submarines", "carriers",
+                  "sanctions"]
+        # Wave 1c: Heavy sources (large CSVs, multiple API calls)
+        wave1c = ["fires", "airports", "flights"]
         # Wave 2: GDELT-dependent sources (stagger to avoid rate limits)
         wave2 = ["events", "conflicts", "cctv", "terrorism", "piracy",
                  "airspace", "notams", "military_bases", "news",
                  "missile_tests"]
 
-        tasks1 = [self.get(n, fetcher_registry[n]) for n in wave1
-                  if n in self._slots and n in fetcher_registry]
-        await asyncio.gather(*tasks1, return_exceptions=True)
-        logger.info("Wave 1 prefetch complete (non-GDELT sources)")
+        for label, wave in [("1a-quick", wave1a), ("1b-medium", wave1b),
+                            ("1c-heavy", wave1c)]:
+            tasks = [self.get(n, fetcher_registry[n]) for n in wave
+                     if n in self._slots and n in fetcher_registry]
+            await asyncio.gather(*tasks, return_exceptions=True)
+            logger.info("Wave %s prefetch complete", label)
+            await asyncio.sleep(0.5)  # yield to event loop for health checks
 
         # Stagger GDELT sources with 2s delay between each
         for name in wave2:

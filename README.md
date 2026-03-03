@@ -2,6 +2,12 @@
 
 Real-time global intelligence platform aggregating 24 free OSINT data sources onto an interactive 3D CesiumJS globe. Features military aircraft detection (adsb.lol dbFlags), threat intelligence (Shodan InternetDB + AlienVault OTX), worldwide SDR receivers (KiwiSDR), naval military vessel classification, LiveATC airport radio, and emergency squawk alert banners.
 
+## Demo
+
+<video src="demo.mp4" controls width="100%"></video>
+
+[Watch demo video](demo.mp4)
+
 ## Architecture
 
 ```

@@ -49,7 +49,7 @@ fi
 
 # Deploy backend
 cd backend
-fly deploy --app "$BACKEND_APP" --region "$REGION" --ha=false
+fly deploy --app "$BACKEND_APP" --yes
 cd ..
 
 echo ""
@@ -82,7 +82,7 @@ fi
 
 # Deploy frontend (VITE_API_BASE is set in fly.toml build.args)
 cd frontend
-fly deploy --app "$FRONTEND_APP" --region "$REGION" --ha=false
+fly deploy --app "$FRONTEND_APP" --yes
 cd ..
 
 echo ""

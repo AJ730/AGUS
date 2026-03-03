@@ -11,6 +11,7 @@ primary_region = "iad"
 [build]
   [build.args]
     VITE_API_BASE = "https://agus-backend.fly.dev/api"
+    NGINX_CONF = "nginx.cloud.conf"
 
 [http_service]
   internal_port = 80
