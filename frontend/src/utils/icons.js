@@ -651,7 +651,134 @@ export function getSanctionIcon(color = '#d97706', size = 32) {
   })
 }
 
-// ==================== 19. MISSILE (missile with exhaust) ====================
+// ==================== 19. CONFLICT (explosion burst) ====================
+export function getConflictIcon(color = '#ef4444', size = 32) {
+  return cached('conflict', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.7 * s
+    // Starburst / explosion shape (8 points)
+    ctx.beginPath()
+    for (let i = 0; i < 8; i++) {
+      const outerA = (i * 45 - 90) * Math.PI / 180
+      const innerA = ((i * 45 + 22.5) - 90) * Math.PI / 180
+      const outerR = 13 * s, innerR = 6 * s
+      if (i === 0) ctx.moveTo(cx + Math.cos(outerA) * outerR, cy + Math.sin(outerA) * outerR)
+      else ctx.lineTo(cx + Math.cos(outerA) * outerR, cy + Math.sin(outerA) * outerR)
+      ctx.lineTo(cx + Math.cos(innerA) * innerR, cy + Math.sin(innerA) * innerR)
+    }
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Inner glow
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 6 * s)
+    grd.addColorStop(0, '#fbbf24')
+    grd.addColorStop(1, 'rgba(251,191,36,0)')
+    ctx.fillStyle = grd
+    ctx.beginPath()
+    ctx.arc(cx, cy, 6 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 20. NEWS (newspaper) ====================
+export function getNewsIcon(color = '#10b981', size = 32) {
+  return cached('news', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.8 * s
+    // Paper body
+    ctx.beginPath()
+    ctx.roundRect(cx - 11 * s, cy - 10 * s, 22 * s, 20 * s, 2 * s)
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Headline bar
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fillRect(cx - 8 * s, cy - 7 * s, 16 * s, 3 * s)
+    // Text lines
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.fillRect(cx - 8 * s, cy - 2 * s, 10 * s, 1.5 * s)
+    ctx.fillRect(cx - 8 * s, cy + 1 * s, 12 * s, 1.5 * s)
+    ctx.fillRect(cx - 8 * s, cy + 4 * s, 8 * s, 1.5 * s)
+    // Image placeholder box
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'
+    ctx.fillRect(cx + 4 * s, cy - 2 * s, 4 * s, 4 * s)
+  })
+}
+
+// ==================== 21. EVENT (lightning bolt marker) ====================
+export function getEventIcon(color = '#f97316', size = 32) {
+  return cached('event', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.7 * s
+    // Lightning bolt
+    ctx.beginPath()
+    ctx.moveTo(cx + 2 * s, cy - 14 * s)
+    ctx.lineTo(cx - 7 * s, cy + 1 * s)
+    ctx.lineTo(cx - 1 * s, cy + 1 * s)
+    ctx.lineTo(cx - 3 * s, cy + 14 * s)
+    ctx.lineTo(cx + 7 * s, cy - 1 * s)
+    ctx.lineTo(cx + 1 * s, cy - 1 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Highlight streak
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    ctx.beginPath()
+    ctx.moveTo(cx + 1 * s, cy - 10 * s)
+    ctx.lineTo(cx - 2 * s, cy - 1 * s)
+    ctx.lineTo(cx, cy - 1 * s)
+    ctx.closePath()
+    ctx.fill()
+  })
+}
+
+// ==================== 22. AIRPORT (runway/tower) ====================
+export function getAirportIcon(color = '#64748b', size = 32) {
+  return cached('airport', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.7 * s
+    // Control tower base
+    ctx.beginPath()
+    ctx.moveTo(cx - 3 * s, cy + 14 * s)
+    ctx.lineTo(cx - 2 * s, cy - 2 * s)
+    ctx.lineTo(cx + 2 * s, cy - 2 * s)
+    ctx.lineTo(cx + 3 * s, cy + 14 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Tower cab (glass top)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.7 * s
+    ctx.beginPath()
+    ctx.roundRect(cx - 6 * s, cy - 8 * s, 12 * s, 6 * s, 1 * s)
+    ctx.fill(); ctx.stroke()
+    // Windows
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.fillRect(cx - 5 * s, cy - 7 * s, 10 * s, 4 * s)
+    // Antenna
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1 * s
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - 8 * s)
+    ctx.lineTo(cx, cy - 13 * s)
+    ctx.stroke()
+    // Antenna tip
+    ctx.fillStyle = '#ef4444'
+    ctx.beginPath()
+    ctx.arc(cx, cy - 13 * s, 1.2 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 23. MISSILE (missile with exhaust) ====================
 export function getMissileIcon(color = '#dc2626', size = 32) {
   return cached('missile', color, size, (ctx, cx, cy, s) => {
     applyShadow(ctx, s)

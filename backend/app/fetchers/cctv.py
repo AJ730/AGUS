@@ -1,11 +1,9 @@
-"""CCTV/webcam camera fetcher (Windy, Overpass, GDELT)."""
+"""CCTV/webcam camera fetcher (Overpass batched city queries)."""
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
-from typing import List
+from typing import List, Tuple
 
 import httpx
 
@@ -13,76 +11,96 @@ from .base import BaseFetcher
 
 logger = logging.getLogger("agus.fetchers")
 
-# Major regions to query for surveillance cameras (global is too large)
-_REGIONS = [
-    (48.5, 2.0, 51.6, 7.0),    # W. Europe (Paris/London/Brussels)
-    (40.4, -4.0, 43.8, 2.5),   # Spain/S. France
-    (51.3, 6.5, 54.0, 14.5),   # Germany/Netherlands
-    (41.8, 12.0, 45.6, 18.5),  # Italy
-    (35.5, 139.0, 36.0, 140.0),  # Tokyo
-    (31.0, 121.0, 31.5, 121.8),  # Shanghai
-    (22.2, 113.8, 22.6, 114.4),  # Hong Kong
-    (40.5, -74.3, 41.0, -73.7),  # NYC
-    (33.7, -118.5, 34.2, -118.0),  # LA
-    (-33.9, 150.9, -33.7, 151.3),  # Sydney
-    (55.5, 37.3, 55.9, 37.9),  # Moscow
-    (1.2, 103.6, 1.5, 104.0),  # Singapore
-    (25.1, 55.0, 25.4, 55.5),  # Dubai
-    (19.0, 72.7, 19.3, 73.0),  # Mumbai
+# City-center bboxes — 4 cities per Overpass batch query (tested sweet spot)
+_CITIES: List[Tuple[str, float, float, float, float]] = [
+    # Americas
+    ("New York",      40.72, -74.01, 40.79, -73.94),
+    ("Los Angeles",   33.98, -118.30, 34.06, -118.22),
+    ("Chicago",       41.85, -87.67, 41.92, -87.60),
+    ("Washington DC", 38.88, -77.05, 38.92, -77.00),
+    ("Toronto",       43.63, -79.42, 43.68, -79.36),
+    ("San Francisco", 37.76, -122.44, 37.80, -122.39),
+    ("Mexico City",   19.40, -99.18, 19.45, -99.12),
+    ("Sao Paulo",    -23.57, -46.67, -23.53, -46.62),
+    ("Buenos Aires", -34.62, -58.40, -34.58, -58.35),
+    ("Bogota",         4.60, -74.10,   4.65, -74.05),
+    # Europe
+    ("London",        51.48, -0.15,  51.55,  0.05),
+    ("Paris",         48.83,  2.28,  48.89,  2.40),
+    ("Berlin",        52.48, 13.34,  52.55, 13.44),
+    ("Rome",          41.88, 12.46,  41.92, 12.52),
+    ("Madrid",        40.40, -3.72,  40.44, -3.67),
+    ("Amsterdam",     52.35,  4.87,  52.39,  4.93),
+    ("Moscow",        55.72, 37.57,  55.79, 37.67),
+    ("Prague",        50.07, 14.40,  50.10, 14.45),
+    ("Vienna",        48.19, 16.35,  48.23, 16.40),
+    ("Stockholm",     59.32, 18.04,  59.35, 18.10),
+    ("Warsaw",        52.22, 20.98,  52.26, 21.03),
+    ("Brussels",      50.83,  4.33,  50.87,  4.38),
+    ("Istanbul",      41.00, 28.96,  41.04, 29.01),
+    # Asia-Pacific
+    ("Tokyo",         35.65, 139.70, 35.72, 139.78),
+    ("Seoul",         37.54, 126.96, 37.58, 127.02),
+    ("Shanghai",      31.21, 121.44, 31.26, 121.50),
+    ("Beijing",       39.90, 116.37, 39.95, 116.42),
+    ("Hong Kong",     22.28, 114.14, 22.32, 114.20),
+    ("Singapore",      1.28, 103.83,  1.32, 103.87),
+    ("Mumbai",        19.05, 72.86,  19.10, 72.92),
+    ("Delhi",         28.61, 77.20,  28.66, 77.25),
+    ("Bangkok",       13.73, 100.50, 13.77, 100.55),
+    ("Dubai",         25.17, 55.25,  25.23, 55.31),
+    ("Tel Aviv",      32.06, 34.76,  32.10, 34.80),
+    ("Taipei",        25.02, 121.51, 25.06, 121.56),
+    # Africa & Oceania
+    ("Cairo",         30.03, 31.22,  30.07, 31.27),
+    ("Cape Town",    -33.94, 18.40, -33.90, 18.45),
+    ("Nairobi",       -1.30, 36.80,  -1.26, 36.84),
+    ("Sydney",       -33.88, 151.18, -33.85, 151.23),
+    ("Melbourne",    -37.83, 144.95, -37.79, 145.00),
 ]
+
+# Rotate which batch we query each refresh cycle to build global coverage
+_BATCH_SIZE = 4
+_PER_CITY_LIMIT = 150
+_TIMEOUT = httpx.Timeout(connect=10.0, read=45.0, write=5.0, pool=10.0)
+_OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
+
+# Module-level state: accumulated cameras + rotation index
+_accumulated: List[dict] = []
+_batch_index: int = 0
 
 
 class CCTVFetcher(BaseFetcher):
-    """Fetches surveillance/traffic cameras from Windy, Overpass, or GDELT."""
+    """Fetches surveillance cameras from Overpass — one batch per refresh cycle."""
 
-    async def _from_windy(self, client: httpx.AsyncClient) -> List[dict]:
-        key = os.getenv("WINDY_API_KEY", "")
-        if not key:
-            return []
-        resp = await client.get(
-            "https://api.windy.com/webcams/api/v3/webcams",
-            headers={"x-windy-api-key": key},
-            params={"limit": 500, "include": "location,player,urls"},
-            timeout=15.0,
+    @staticmethod
+    def _build_query(cities: list) -> str:
+        union = "".join(
+            f'node["man_made"="surveillance"]({s},{w},{n},{e});'
+            for _, s, w, n, e in cities
         )
-        resp.raise_for_status()
-        payload = resp.json()
-        items = payload.get("webcams") or payload.get("result", {}).get("webcams", [])
-        results: List[dict] = []
-        for item in items:
-            loc = item.get("location") or {}
-            lat, lon = loc.get("latitude"), loc.get("longitude")
-            if lat is None or lon is None:
-                continue
-            player = item.get("player") or {}
-            stream = (player.get("live", {}).get("embed", "")
-                      or player.get("day", {}).get("embed", "") or "")
-            results.append({
-                "name": item.get("title", "Webcam"), "city": loc.get("city", ""),
-                "country": loc.get("country", ""), "region": loc.get("region", ""),
-                "latitude": lat, "longitude": lon, "type": "webcam",
-                "stream_url": stream, "status": item.get("status", ""),
-                "source": "Windy",
-            })
-        return results
+        limit = _PER_CITY_LIMIT * len(cities)
+        return f'[out:json][timeout:40];({union});out body qt {limit};'
 
-    async def _from_overpass(self, client: httpx.AsyncClient) -> List[dict]:
-        bbox_strs = "".join(
-            f"node[\"man_made\"=\"surveillance\"]({s},{w},{n},{e});"
-            f"node[\"highway\"=\"speed_camera\"]({s},{w},{n},{e});"
-            for s, w, n, e in _REGIONS
-        )
-        query = f'[out:json][timeout:90];({bbox_strs});out body qt 1000;'
-        elements = await self._overpass(client, query)
+    @staticmethod
+    def _parse(elements: list, city_bboxes: list) -> List[dict]:
         results: List[dict] = []
         for el in elements:
             lat, lon = el.get("lat"), el.get("lon")
             if lat is None or lon is None:
                 continue
+            city = "Unknown"
+            for name, s, w, n, e in city_bboxes:
+                if s <= lat <= n and w <= lon <= e:
+                    city = name
+                    break
             tags = el.get("tags") or {}
             results.append({
                 "name": tags.get("name", tags.get("operator", "Camera")),
-                "city": tags.get("addr:city", ""),
+                "city": city,
                 "country": tags.get("addr:country", ""),
                 "latitude": lat, "longitude": lon,
                 "type": tags.get("surveillance:type", "surveillance"),
@@ -92,18 +110,56 @@ class CCTVFetcher(BaseFetcher):
             })
         return results
 
-    async def _from_gdelt(self, client: httpx.AsyncClient) -> List[dict]:
-        query = "(webcam OR surveillance OR CCTV)"
-        features = await self._gdelt(client, query, "30D", 500)
-        return [{
-            "name": (f.get("properties") or {}).get("name", "Camera"),
-            "city": "", "country": "",
-            "latitude": f["geometry"]["coordinates"][1],
-            "longitude": f["geometry"]["coordinates"][0],
-            "type": "webcam", "stream_url": "", "source": "GDELT",
-        } for f in features if (f.get("geometry") or {}).get("coordinates")]
+    async def _fetch_batch(self, cities: list) -> List[dict]:
+        """Fetch one batch using a dedicated client (avoids shared pool)."""
+        query = self._build_query(cities)
+        names = [c[0] for c in cities]
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            for url in _OVERPASS_URLS:
+                try:
+                    resp = await client.post(url, data={"data": query},
+                                             timeout=_TIMEOUT)
+                    if resp.status_code in (429, 504):
+                        logger.warning("CCTV [%s]: %d from %s",
+                                       ", ".join(names), resp.status_code,
+                                       url.split("/")[2])
+                        continue
+                    resp.raise_for_status()
+                    elements = resp.json().get("elements") or []
+                    results = self._parse(elements, cities)
+                    logger.info("CCTV [%s]: %d cameras",
+                                ", ".join(names), len(results))
+                    return results
+                except Exception as exc:
+                    logger.warning("CCTV [%s]: %s on %s",
+                                   ", ".join(names), exc,
+                                   url.split("/")[2])
+                    continue
+        logger.warning("CCTV [%s]: all mirrors failed", ", ".join(names))
+        return []
 
     async def fetch(self, client: httpx.AsyncClient) -> List[dict]:
-        return await self._try_sources(
-            client, self._from_windy, self._from_overpass, self._from_gdelt,
-        )
+        global _accumulated, _batch_index
+
+        # Split all cities into batches of 4
+        all_batches = [
+            _CITIES[i:i + _BATCH_SIZE]
+            for i in range(0, len(_CITIES), _BATCH_SIZE)
+        ]
+
+        # Fetch ONE batch this cycle (fast — no sleeps, ~3-5 seconds)
+        batch = all_batches[_batch_index % len(all_batches)]
+        new_cameras = await self._fetch_batch(batch)
+
+        # Deduplicate by (lat, lon) and merge into accumulated set
+        existing = {(c["latitude"], c["longitude"]) for c in _accumulated}
+        for cam in new_cameras:
+            key = (cam["latitude"], cam["longitude"])
+            if key not in existing:
+                _accumulated.append(cam)
+                existing.add(key)
+
+        _batch_index += 1
+        logger.info("CCTV total: %d cameras (batch %d/%d)",
+                     len(_accumulated), _batch_index, len(all_batches))
+        return list(_accumulated)

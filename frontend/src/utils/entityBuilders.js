@@ -7,6 +7,7 @@ import {
   getTerrorismIcon, getEarthquakeIcon, getFireIcon, getWeatherAlertIcon,
   getRefugeeIcon, getCyberIcon, getSanctionIcon,
   getThreatIntelIcon, getSignalsIcon, getMilitaryVesselIcon, getMissileIcon,
+  getConflictIcon, getNewsIcon, getEventIcon, getAirportIcon,
 } from './icons'
 
 // Build entities for a given layer from raw data items.
@@ -97,15 +98,14 @@ function buildFlight(ds, props, geom, lon, lat, cfg) {
 
 function buildConflict(ds, props, geom, lon, lat, cfg) {
   const fatalities = props.fatalities ?? 0
-  const baseSize = clamp(8 + fatalities * 2, 8, 40)
+  const iconSize = Math.round(clamp(18 + fatalities * 2, 18, 36))
 
   const entity = ds.entities.add({
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
-    point: {
-      pixelSize: baseSize,
-      color: hexColor('#ef4444', 0.8),
-      outlineColor: hexColor('#ff0000', 0.9),
-      outlineWidth: 2,
+    billboard: {
+      image: getConflictIcon('#ef4444', 32),
+      width: iconSize,
+      height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       scaleByDistance: new Cesium.NearFarScalar(1e4, 1.2, 1e7, 0.4),
     },
@@ -132,11 +132,10 @@ function buildEvent(ds, props, geom, lon, lat, cfg) {
   const headline = props.title ?? props.headline ?? 'Event'
   const entity = ds.entities.add({
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
-    point: {
-      pixelSize: 8,
-      color: hexColor('#f97316', 0.85),
-      outlineColor: hexColor('#ffb74d', 0.7),
-      outlineWidth: 2,
+    billboard: {
+      image: getEventIcon('#f97316', 32),
+      width: 20,
+      height: 20,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       scaleByDistance: new Cesium.NearFarScalar(1e4, 1.2, 1e7, 0.3),
     },
@@ -159,16 +158,14 @@ function buildEvent(ds, props, geom, lon, lat, cfg) {
 function buildNews(ds, props, geom, lon, lat, cfg) {
   const title = props.title ?? props.name ?? props.headline ?? 'News'
   const articleCount = props.article_count ?? props.count ?? 0
-  // Size by article count (more articles = bigger/more important)
-  const ps = clamp(7 + Math.log10(Math.max(articleCount, 1)) * 3, 7, 18)
+  const iconSize = Math.round(clamp(16 + Math.log10(Math.max(articleCount, 1)) * 4, 16, 28))
 
   const entity = ds.entities.add({
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
-    point: {
-      pixelSize: ps,
-      color: hexColor('#10b981', 0.9),
-      outlineColor: hexColor('#34d399', 0.7),
-      outlineWidth: 2,
+    billboard: {
+      image: getNewsIcon('#10b981', 32),
+      width: iconSize,
+      height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       scaleByDistance: new Cesium.NearFarScalar(1e4, 1.2, 1e7, 0.3),
     },
@@ -635,11 +632,10 @@ function buildSatellite(ds, props, geom, lon, lat, cfg) {
 function buildAirport(ds, props, geom, lon, lat, cfg) {
   const entity = ds.entities.add({
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
-    point: {
-      pixelSize: 7,
-      color: hexColor('#64748b', 0.8),
-      outlineColor: hexColor('#94a3b8', 0.6),
-      outlineWidth: 1,
+    billboard: {
+      image: getAirportIcon('#64748b', 32),
+      width: 16,
+      height: 16,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       scaleByDistance: new Cesium.NearFarScalar(1e3, 1.3, 5e6, 0.2),
     },
