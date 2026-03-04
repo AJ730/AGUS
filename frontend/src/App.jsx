@@ -467,6 +467,8 @@ export default function App() {
       scene.primitives.remove(tiles3dRef.current)
       tiles3dRef.current = null
       scene.globe.show = true
+      scene.globe.showGroundAtmosphere = true
+      scene.globe.depthTestAgainstTerrain = false
     }
     // Remove darksat nightlights overlay when switching away
     if (mapStyle !== 'darksat' && layers.nightlightsOverlay) {
@@ -517,8 +519,15 @@ export default function App() {
           if (loadTileset) {
             loadTileset.then(tileset => {
               tiles3dRef.current = scene.primitives.add(tileset)
-              scene.globe.show = false
+              // Keep globe visible for CLAMP_TO_GROUND entity positioning
+              // but hide imagery so it doesn't z-fight with 3D tiles
+              scene.globe.show = true
+              scene.globe.baseColor = Cesium.Color.fromCssColorString('#000008')
+              scene.globe.showGroundAtmosphere = false
+              scene.globe.depthTestAgainstTerrain = false
               layers.esri.show = false
+              layers.labels.show = false
+              layers.darkStreets.show = false
               scene.requestRender()
             }).catch(() => {
               setMapStyle('hybrid')
