@@ -2,13 +2,18 @@ import React from 'react'
 import { fmt } from '../utils/helpers'
 
 const ANALYTICS_METRICS = [
-  { key: 'flights',     label: 'Flights',     color: '#fbbf24' },
-  { key: 'conflicts',   label: 'Conflicts',   color: '#ef4444' },
-  { key: 'earthquakes', label: 'Earthquakes', color: '#eab308' },
-  { key: 'fires',       label: 'Fires',       color: '#f97316' },
-  { key: 'news',        label: 'News',        color: '#10b981' },
-  { key: 'threat_intel', label: 'Threats',   color: '#f43f5e' },
-  { key: 'missile_tests', label: 'Missiles', color: '#dc2626' },
+  { key: 'flights',       label: 'Flights',     color: '#fbbf24' },
+  { key: 'conflicts',     label: 'Conflicts',   color: '#ef4444' },
+  { key: 'earthquakes',   label: 'Earthquakes', color: '#eab308' },
+  { key: 'fires',         label: 'Fires',       color: '#f97316' },
+  { key: 'news',          label: 'News',        color: '#10b981' },
+  { key: 'telegram_osint', label: 'OSINT',     color: '#0088cc' },
+  { key: 'threat_intel',  label: 'Threats',     color: '#f43f5e' },
+  { key: 'missile_tests', label: 'Missiles',   color: '#dc2626' },
+  { key: 'rocket_alerts', label: 'Alerts',     color: '#ff0000' },
+  { key: 'reddit_osint', label: 'Reddit',     color: '#ff4500' },
+  { key: 'equipment_losses', label: 'Eq. Loss', color: '#92400e' },
+  { key: 'gps_jamming', label: 'GPS Jam',       color: '#e11d48' },
 ]
 
 const AnalyticsCards = React.memo(function AnalyticsCards({ analytics }) {

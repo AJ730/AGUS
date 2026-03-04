@@ -97,9 +97,20 @@ class CacheManager:
                     len((data or {}).get("features", []))
                     if isinstance(data, dict) else 0
                 )
+                # If fetcher returned empty and we have no prior data,
+                # use a short TTL (30s) so we retry quickly instead of
+                # caching an empty result for the full TTL period.
+                now = time.monotonic()
+                if count == 0 and slot.entry.data in (None, [], {"type": "FeatureCollection", "features": []}):
+                    backoff_ttl = 30.0
+                    fetched_at = now - slot.ttl_seconds + backoff_ttl
+                    logger.info("[%s] empty result, will retry in %.0fs", name, backoff_ttl)
+                else:
+                    fetched_at = now
+
                 slot.entry = CacheEntry(
                     data=data,
-                    fetched_at=time.monotonic(),
+                    fetched_at=fetched_at,
                     fetched_at_wall=time.time(),
                     record_count=count,
                     error=None,
@@ -126,10 +137,13 @@ class CacheManager:
         """
         # Wave 1a: Quick API sources (small responses, fast)
         wave1a = ["earthquakes", "weather_alerts", "cyber", "refugees",
-                  "threat_intel", "signals", "satellites"]
+                  "threat_intel", "signals", "satellites",
+                  "reddit_osint", "telegram_osint", "live_streams",
+                  "rocket_alerts", "natural_events"]
         # Wave 1b: Medium sources (Wikidata SPARQL, moderate size)
         wave1b = ["vessels", "nuclear", "submarines", "carriers",
-                  "sanctions"]
+                  "sanctions", "undersea_cables", "geo_confirmed",
+                  "gps_jamming", "equipment_losses", "internet_outages"]
         # Wave 1c: Heavy sources (large CSVs, multiple API calls)
         wave1c = ["fires", "airports", "flights"]
         # Wave 2: GDELT-dependent sources (stagger to avoid rate limits)

@@ -8,6 +8,10 @@ import {
   getRefugeeIcon, getCyberIcon, getSanctionIcon,
   getThreatIntelIcon, getSignalsIcon, getMilitaryVesselIcon, getMissileIcon,
   getConflictIcon, getNewsIcon, getEventIcon, getAirportIcon,
+  getTelegramIcon, getRocketAlertIcon, getGeoConfirmedIcon, getUnderseaCableIcon,
+  getLiveStreamIcon, getRedditIcon,
+  getEquipmentLossIcon, getInternetOutageIcon, getGPSJammingIcon,
+  getNaturalEventIcon,
 } from './icons'
 
 // Build entities for a given layer from raw data items.
@@ -73,6 +77,10 @@ function buildFlight(ds, props, geom, lon, lat, cfg) {
       'Vert Rate': (props.vertical_rate ?? 0) > 0 ? '+' + props.vertical_rate + ' ft/min' : (props.vertical_rate ?? 0) + ' ft/min',
       Squawk: props.squawk || 'N/A',
       Military: props.is_military ? 'YES \u26a0' : 'No',
+      Owner: props.owner || '',
+      'Mil Branch': props.mil_branch || '',
+      Manufacturer: props.manufacturer || '',
+      'A/C Model': props.aircraft_model || '',
       Route: props.flight_route || '',
     },
   }
@@ -192,10 +200,10 @@ function buildCctv(ds, props, geom, lon, lat, cfg) {
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
     billboard: {
       image: getCctvIcon('#22c55e', 32),
-      width: 16,
-      height: 16,
+      width: 24,
+      height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.3),
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -343,6 +351,9 @@ function buildVessel(ds, props, geom, lon, lat, cfg) {
     rows: {
       MMSI: props.mmsi || 'N/A',
       Classification: isMil ? 'MILITARY' : 'Civilian',
+      Navy: props.navy || '',
+      'Hull #': props.hull_number || '',
+      Class: props.vessel_class || '',
       Type: props.ship_type || props.vessel_type || '',
       Speed: (props.speed || 0) + ' kn',
       Heading: (props.heading || 0) + '\u00b0',
@@ -678,6 +689,8 @@ function buildNotam(ds, props, geom, lon, lat, cfg) {
 
 function buildCarrier(ds, props, geom, lon, lat, cfg) {
   const operator = (props.operator || '').toLowerCase()
+  const status = (props.status || '').toLowerCase()
+  const isDeployed = status.includes('deployed') || status.includes('detected')
   const color = operator.includes('united states') || operator.includes('us navy') ? '#3b82f6'
     : operator.includes('russia') || operator.includes('soviet') ? '#ef4444'
     : operator.includes('china') || operator.includes('people') ? '#eab308'
@@ -690,20 +703,31 @@ function buildCarrier(ds, props, geom, lon, lat, cfg) {
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
     billboard: {
       image: getCarrierIcon(color, 32),
-      width: 28,
-      height: 28,
+      width: isDeployed ? 32 : 24,
+      height: isDeployed ? 32 : 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.6),
     },
   })
+
+  const rows = {
+    Operator: props.operator || 'Unknown',
+    Status: props.status || 'N/A',
+  }
+  if (props.class) rows.Class = props.class
+  if (props.home_port) rows['Home Port'] = props.home_port
+  if (props.confidence) rows.Confidence = props.confidence.toUpperCase()
+  if (props.corroborating_sources) rows.Sources = props.corroborating_sources + ' independent'
+  if (props.source) rows['Intel Source'] = props.source
+  if (props.headline) rows.Headline = props.headline.substring(0, 100)
+
+  const statusIcon = isDeployed ? '\u{1F6A2}' : '\u2693'
   entity._tooltipData = {
-    title: '\u2693 ' + (props.name || 'Warship'),
-    rows: {
-      Class: props.class || 'Unknown',
-      Operator: props.operator || 'Unknown',
-      'Home Port': props.home_port || 'N/A',
-      Status: props.status || 'N/A',
-    },
+    title: statusIcon + ' ' + (props.name || 'Warship'),
+    rows,
+  }
+  if (props.headline && props.url) {
+    entity._cctvData = { name: props.name, stream_url: props.url }
   }
 }
 
@@ -758,11 +782,18 @@ function buildSignals(ds, props, geom, lon, lat, cfg) {
       Antenna: props.antenna || '',
       Users: props.users_max ? `${props.users || 0}/${props.users_max}` : '',
       Source: props.source || 'KiwiSDR',
-      Click: props.url ? 'Click to open web tuner' : '',
+      Click: props.url ? 'Click to connect to radio' : '',
     },
   }
-  if (props.url) {
-    entity._cctvData = { name: props.name || 'SDR Receiver', stream_url: props.url }
+  // Attach radio data for RadioPanel instead of opening in new tab
+  entity._radioData = {
+    name: props.name || 'SDR Receiver',
+    url: props.url || '',
+    location: props.location || '',
+    frequency_range: props.frequency_range || '',
+    antenna: props.antenna || '',
+    users: props.users || 0,
+    users_max: props.users_max || 0,
   }
 }
 
@@ -801,12 +832,339 @@ function buildMissileTest(ds, props, geom, lon, lat, cfg) {
   rows.Source = props.source || 'OSINT'
   if (props.url) rows.Article = 'Click to read'
 
+  if (props.origin_latitude && props.origin_longitude) {
+    rows['Launch Site'] = props.launch_site || 'Unknown'
+    rows['Origin'] = props.origin_confidence === 'confirmed' ? 'CONFIRMED' : 'Inferred'
+  }
+
   entity._tooltipData = {
     title: '\uD83D\uDCA5 ' + (props.name || typeLabel || 'Strike Event').slice(0, 80),
     rows,
   }
+  // Video search on click for missile/strike events
+  entity._videoData = {
+    query: (props.country || '') + ' ' + (typeLabel || 'strike') + ' ' + (props.actor || ''),
+    title: props.name || typeLabel,
+  }
   if (props.url) {
     entity._cctvData = { name: props.name, stream_url: props.url }
+  }
+}
+
+function buildTelegramOsint(ds, props, geom, lon, lat, cfg) {
+  const severity = (props.severity || 'medium').toLowerCase()
+  const color = severity === 'high' ? '#ef4444' : severity === 'critical' ? '#dc2626' : '#0088cc'
+  const iconSize = severity === 'high' || severity === 'critical' ? 26 : 22
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getTelegramIcon(color, 32),
+      width: iconSize,
+      height: iconSize,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F4E8} ' + (props.title || 'OSINT Report').substring(0, 100),
+    rows: {
+      Channel: props.channel || 'Telegram',
+      Category: props.category || '',
+      Location: props.location || '',
+      Severity: (props.severity || 'medium').toUpperCase(),
+      Date: props.date || '',
+      Source: props.source || 'Telegram',
+    },
+  }
+  if (props.url) {
+    entity._cctvData = { name: props.title, stream_url: props.url }
+  }
+}
+
+function buildRocketAlert(ds, props, geom, lon, lat, cfg) {
+  const alertType = (props.alert_type || 'rocket_alert').toLowerCase()
+  const isActive = true // OREF alerts are always active/recent
+  const iconSize = isActive ? 30 : 24
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getRocketAlertIcon('#ff0000', 32),
+      width: iconSize,
+      height: iconSize,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.6),
+    },
+  })
+
+  const typeLabel = alertType === 'uav_intrusion' ? 'UAV Intrusion'
+    : alertType === 'hostile_aircraft' ? 'Hostile Aircraft'
+    : alertType === 'earthquake' ? 'Earthquake Alert'
+    : 'Rocket/Missile Alert'
+
+  entity._tooltipData = {
+    title: '\u{1F6A8} ' + typeLabel,
+    rows: {
+      Location: props.location || props.title || '',
+      Type: typeLabel,
+      Severity: 'CRITICAL',
+      Time: props.date || 'Recent',
+      Source: props.source || 'OREF',
+    },
+  }
+}
+
+function buildGeoConfirmed(ds, props, geom, lon, lat, cfg) {
+  const isVerified = props.verified !== false
+  const color = isVerified ? '#14b8a6' : '#f97316'
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getGeoConfirmedIcon(color, 32),
+      width: 24,
+      height: 24,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: (isVerified ? '\u2705 ' : '\u{1F50D} ') + (props.title || 'Verified Event').substring(0, 100),
+    rows: {
+      Status: isVerified ? 'VERIFIED' : 'Unverified',
+      Date: props.date || '',
+      Description: (props.description || '').substring(0, 150),
+      Source: props.source || 'GeoConfirmed',
+      Media: (props.media_urls || []).length > 0 ? (props.media_urls || []).length + ' source(s)' : '',
+    },
+  }
+  if (props.url || (props.media_urls && props.media_urls[0])) {
+    entity._cctvData = { name: props.title, stream_url: props.url || props.media_urls[0] }
+  }
+}
+
+function buildUnderseaCable(ds, props, geom, lon, lat, cfg) {
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getUnderseaCableIcon('#06b6d4', 32),
+      width: 20,
+      height: 20,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.3, 1e7, 0.3),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F30A} ' + (props.title || 'Submarine Cable'),
+    rows: {
+      Country: props.country || '',
+      Cables: props.cable_count ? props.cable_count + ' cable(s)' : '',
+      Length: props.cable_length || '',
+      RFS: props.rfs || '',
+      Owners: (props.owners || '').substring(0, 100),
+      Source: 'TeleGeography',
+    },
+  }
+}
+
+function buildLiveStream(ds, props, geom, lon, lat, cfg) {
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getLiveStreamIcon('#ec4899', 32),
+      width: 26,
+      height: 26,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F4FA} ' + (props.name || 'Live Stream'),
+    rows: {
+      City: props.city || '',
+      Country: props.country || '',
+      Language: props.language || '',
+      Type: props.type || '24/7 Live',
+      Stream: 'Click to watch LIVE',
+    },
+  }
+  if (props.stream_url) {
+    entity._cctvData = { name: props.name || 'Live TV', stream_url: props.stream_url }
+  }
+}
+
+function buildRedditOsint(ds, props, geom, lon, lat, cfg) {
+  const severity = (props.severity || 'medium').toLowerCase()
+  const color = severity === 'critical' ? '#dc2626'
+    : severity === 'high' ? '#ef4444'
+    : severity === 'medium' ? '#f97316'
+    : '#ff4500'
+  const iconSize = severity === 'critical' || severity === 'high' ? 26 : 22
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getRedditIcon(color, 32),
+      width: iconSize,
+      height: iconSize,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F4E2} ' + (props.title || 'Reddit OSINT').substring(0, 100),
+    rows: {
+      Subreddit: props.channel || '',
+      Category: props.category || '',
+      Location: props.location || '',
+      Severity: (props.severity || 'medium').toUpperCase(),
+      Score: props.score ? props.score.toLocaleString() + ' upvotes' : '',
+      Comments: props.comments ? props.comments.toLocaleString() : '',
+      Flair: props.flair || '',
+      Source: props.source || 'Reddit',
+    },
+  }
+  if (props.url) {
+    entity._cctvData = { name: props.title, stream_url: props.url }
+  }
+}
+
+function buildEquipmentLoss(ds, props, geom, lon, lat, cfg) {
+  const status = (props.status || 'destroyed').toLowerCase()
+  const color = status === 'destroyed' ? '#dc2626'
+    : status === 'captured' ? '#f97316'
+    : status === 'damaged' ? '#eab308'
+    : '#92400e'
+  const verified = props.verified
+  const iconSize = verified ? 26 : 22
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getEquipmentLossIcon(color, 32),
+      width: iconSize,
+      height: iconSize,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F4A5} ' + (props.name || 'Equipment Loss').substring(0, 80),
+    rows: {
+      Equipment: props.equipment_type || 'Unknown',
+      Status: (props.status || 'destroyed').toUpperCase(),
+      Country: props.country || '',
+      Operator: props.operator || '',
+      Date: props.date || '',
+      Verified: verified ? 'PHOTO VERIFIED' : 'Reported',
+      Category: props.category || '',
+      Source: props.source || 'WarSpotting',
+    },
+  }
+  if (props.url || props.photo_url) {
+    entity._cctvData = { name: props.name, stream_url: props.url || props.photo_url }
+  }
+}
+
+function buildInternetOutage(ds, props, geom, lon, lat, cfg) {
+  const severity = (props.severity || 'medium').toLowerCase()
+  const color = severity === 'critical' ? '#dc2626'
+    : severity === 'high' ? '#ef4444'
+    : '#7c3aed'
+  const iconSize = severity === 'critical' ? 30 : severity === 'high' ? 26 : 22
+
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getInternetOutageIcon(color, 32),
+      width: iconSize,
+      height: iconSize,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F4E1} ' + (props.name || 'Internet Outage'),
+    rows: {
+      Country: props.country || '',
+      Severity: (props.severity || 'medium').toUpperCase(),
+      Level: props.level || '',
+      Description: (props.description || '').substring(0, 150),
+      Score: props.score ? props.score + '% drop' : '',
+      Date: props.date || '',
+      Source: props.source || 'IODA',
+    },
+  }
+}
+
+function buildGPSJamming(ds, props, geom, lon, lat, cfg) {
+  const severity = (props.severity || 'medium').toLowerCase()
+  const color = severity === 'critical' ? '#dc2626'
+    : severity === 'high' ? '#ef4444'
+    : '#e11d48'
+  const radius = (props.radius_km || 100) * 1000  // km to meters
+
+  // Zone circle
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    ellipse: {
+      semiMinorAxis: radius,
+      semiMajorAxis: radius,
+      material: hexColor(color, 0.12),
+      outline: true,
+      outlineColor: hexColor(color, 0.5),
+      outlineWidth: 2,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+    },
+  })
+  entity._tooltipData = {
+    title: '\u{1F6F0} ' + (props.name || 'GPS Jamming Zone'),
+    rows: {
+      Type: (props.type || 'jamming').toUpperCase(),
+      Severity: (props.severity || 'medium').toUpperCase(),
+      Radius: (props.radius_km || 100) + ' km',
+      Description: (props.description || '').substring(0, 150),
+      Status: props.date === 'ongoing' ? 'ACTIVE (ongoing)' : props.date || '',
+      Verified: props.verified ? 'CONFIRMED' : 'Reported',
+      Source: props.source || 'OPSGROUP',
+    },
+  }
+
+  // Center marker icon
+  ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getGPSJammingIcon(color, 32),
+      width: 24,
+      height: 24,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+    },
+  })
+}
+
+function buildNaturalEvent(ds, props, geom, lon, lat, cfg) {
+  const name = props.name || 'Natural Event'
+  const category = props.category || 'Unknown'
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getNaturalEventIcon(cfg.color),
+      width: 28,
+      height: 28,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: name,
+    rows: {
+      Category: category,
+      Date: props.date || '',
+      Magnitude: props.magnitude || '',
+      Source: props.source || 'NASA EONET',
+    },
   }
 }
 
@@ -850,4 +1208,14 @@ const ENTITY_BUILDERS = {
   threat_intel: buildThreatIntel,
   signals: buildSignals,
   missile_tests: buildMissileTest,
+  telegram_osint: buildTelegramOsint,
+  rocket_alerts: buildRocketAlert,
+  geo_confirmed: buildGeoConfirmed,
+  undersea_cables: buildUnderseaCable,
+  live_streams: buildLiveStream,
+  reddit_osint: buildRedditOsint,
+  equipment_losses: buildEquipmentLoss,
+  internet_outages: buildInternetOutage,
+  gps_jamming: buildGPSJamming,
+  natural_events: buildNaturalEvent,
 }

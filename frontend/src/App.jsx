@@ -5,9 +5,16 @@ import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { LAYERS, DEFAULT_VISIBLE_LAYERS } from './config/layers'
 import { clamp, escapeHtml } from './utils/helpers'
 import { buildEntities } from './utils/entityBuilders'
+import { buildArcs, extractArcsFromEvents, extractCyberArcs } from './utils/arcBuilder'
+import { createCRTStage, createNVGStage, createFLIRStage, createAnimeStage, createReticleStage, removeAllFilters } from './utils/visualFilters'
+import { GIBS_LAYERS, addGIBSOverlay, removeGIBSOverlay } from './utils/gibsLayers'
+import { StreetTrafficController } from './utils/streetTraffic'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import FlightPanel from './components/FlightPanel'
+import VideoPanel from './components/VideoPanel'
+import AnalysisPanel from './components/AnalysisPanel'
+import RadioPanel from './components/RadioPanel'
 import BottomBar from './components/BottomBar'
 import AnalyticsCards from './components/AnalyticsCards'
 import NewsTicker from './components/NewsTicker'
@@ -15,7 +22,7 @@ import NewsTicker from './components/NewsTicker'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 // Analytics layer keys -- layers tracked in the analytics cards
-const ANALYTICS_KEYS = ['flights', 'conflicts', 'earthquakes', 'fires', 'news', 'threat_intel', 'missile_tests']
+const ANALYTICS_KEYS = ['flights', 'conflicts', 'earthquakes', 'fires', 'news', 'threat_intel', 'missile_tests', 'telegram_osint', 'rocket_alerts', 'reddit_osint', 'equipment_losses', 'gps_jamming']
 
 export default function App() {
   const containerRef = useRef(null)
@@ -41,10 +48,23 @@ export default function App() {
   const [flightPanel, setFlightPanel] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState({})
-  const [analytics, setAnalytics] = useState({ flights: 0, conflicts: 0, earthquakes: 0, fires: 0, news: 0, threat_intel: 0, missile_tests: 0 })
+  const [analytics, setAnalytics] = useState({ flights: 0, conflicts: 0, earthquakes: 0, fires: 0, news: 0, threat_intel: 0, missile_tests: 0, telegram_osint: 0, rocket_alerts: 0, reddit_osint: 0, equipment_losses: 0, gps_jamming: 0 })
   const [squawkAlerts, setSquawkAlerts] = useState([])
   const [cameraAlt, setCameraAlt] = useState(0)
   const [newsItems, setNewsItems] = useState([])
+  const [mapStyle, setMapStyle] = useState('hybrid') // 'satellite', 'dark', 'hybrid'
+  const [videoPanel, setVideoPanel] = useState(null)
+  const [analysisPanel, setAnalysisPanel] = useState(null)
+  const [radioPanel, setRadioPanel] = useState(null)
+  const [dismissedSquawk, setDismissedSquawk] = useState(false)
+  const [visualFilter, setVisualFilter] = useState('crt')   // 'crt' | 'nvg' | 'flir' | 'none'
+  const [gibsActive, setGibsActive] = useState({})          // { viirs_thermal: true, ... }
+  const gibsLayerRefs = useRef({})                           // { viirs_thermal: ImageryLayer, ... }
+  const tiles3dRef = useRef(null)                            // Google 3D tileset ref
+  const streetTrafficRef = useRef(null)                      // StreetTrafficController
+  const trafficTilesRef = useRef(null)                       // Google traffic tile layer
+  const [trafficOverlay, setTrafficOverlay] = useState(false) // Google traffic tiles toggle
+  const imageryLayersRef = useRef({ esri: null, labels: null, darkStreets: null, nightlightsOverlay: null })
 
   // Initialize CesiumJS
   useEffect(() => {
@@ -73,7 +93,7 @@ export default function App() {
     const globe = scene.globe
 
     // HIGH-RES SATELLITE IMAGERY (ESRI -- free, no API key)
-    viewer.imageryLayers.addImageryProvider(
+    const esriLayer = viewer.imageryLayers.addImageryProvider(
       new Cesium.UrlTemplateImageryProvider({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         credit: new Cesium.Credit('Esri, Maxar, Earthstar Geographics'),
@@ -82,14 +102,26 @@ export default function App() {
     )
 
     // LABELS OVERLAY (borders, cities, roads)
-    const labels = viewer.imageryLayers.addImageryProvider(
+    const labelsLayer = viewer.imageryLayers.addImageryProvider(
       new Cesium.UrlTemplateImageryProvider({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
         credit: new Cesium.Credit('Esri'),
         maximumLevel: 15,
       })
     )
-    labels.alpha = 0.6
+    labelsLayer.alpha = 0.6
+
+    // DARK STREET MAP (CartoDB Dark Matter -- free, detailed at street level)
+    const darkStreetsLayer = viewer.imageryLayers.addImageryProvider(
+      new Cesium.UrlTemplateImageryProvider({
+        url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+        credit: new Cesium.Credit('CartoDB, OpenStreetMap'),
+        maximumLevel: 20,
+      })
+    )
+    darkStreetsLayer.alpha = 0.7 // Blended in hybrid mode
+
+    imageryLayersRef.current = { esri: esriLayer, labels: labelsLayer, darkStreets: darkStreetsLayer }
 
     // Globe settings -- NO LIGHTING (keeps globe stable and fully visible)
     globe.enableLighting = false
@@ -117,6 +149,9 @@ export default function App() {
     // FXAA anti-aliasing (GPU-powered)
     scene.postProcessStages.fxaa.enabled = true
 
+    // CRT filter applied by default (replaces old CSS scanlines)
+    scene.postProcessStages.add(createCRTStage())
+
     // High-DPI rendering -- use full device resolution
     viewer.resolutionScale = window.devicePixelRatio || 1.0
 
@@ -139,14 +174,65 @@ export default function App() {
       viewer.dataSources.add(ds)
     }
 
-    // Camera altitude tracking (throttled to 2x/sec)
+    // Street traffic controller (animated vehicles on roads below 5km)
+    const trafficCtrl = new StreetTrafficController(viewer)
+    streetTrafficRef.current = trafficCtrl
+
+    // Camera altitude tracking + altitude-based street/satellite crossfade (throttled)
     let lastAltUpdate = 0
+    let lastVpFetch = 0
+    let lastVpLat = null
+    let lastVpLon = null
     scene.postRender.addEventListener(() => {
       const now = Date.now()
       if (now - lastAltUpdate < 500) return
       lastAltUpdate = now
       const cart = viewer.camera.positionCartographic
-      if (cart) setCameraAlt(Math.round(cart.height / 1000))
+      if (!cart) return
+      const altKm = cart.height / 1000
+      const camLat = Cesium.Math.toDegrees(cart.latitude)
+      const camLon = Cesium.Math.toDegrees(cart.longitude)
+      setCameraAlt(Math.round(altKm))
+
+      // Procedural street traffic (animated vehicles on roads)
+      trafficCtrl.update(altKm, camLat, camLon)
+
+      // Altitude-based crossfade: only in hybrid mode (dark/darksat keep full alpha)
+      const layers = imageryLayersRef.current
+      if (layers.darkStreets && layers.esri && layers.esri.show) {
+        const streetAlpha = altKm < 50 ? 0.85
+          : altKm > 200 ? 0.0
+          : 0.85 * (1 - (altKm - 50) / 150)
+        layers.darkStreets.alpha = streetAlpha
+      }
+
+      // Viewport-based flight fetch: when user zooms in (<500km alt), fetch flights for current view
+      // Throttle to once per 15s and only if camera moved significantly
+      if (altKm < 500 && now - lastVpFetch > 15000) {
+        const vpLat = Cesium.Math.toDegrees(cart.latitude)
+        const vpLon = Cesium.Math.toDegrees(cart.longitude)
+        const moved = lastVpLat === null || Math.abs(vpLat - lastVpLat) > 1 || Math.abs(vpLon - lastVpLon) > 1
+        if (moved) {
+          lastVpFetch = now
+          lastVpLat = vpLat
+          lastVpLon = vpLon
+          const dist = Math.min(250, Math.max(50, Math.round(altKm * 0.8)))
+          fetch(`${API_BASE}/flights_viewport?lat=${vpLat.toFixed(2)}&lon=${vpLon.toFixed(2)}&dist=${dist}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (!data || !Array.isArray(data)) return
+              const ds = dataSourcesRef.current.flights
+              if (!ds || !ds.show) return
+              // Only update if we got more flights than currently cached
+              if (data.length > (ds.entities.values.length || 0)) {
+                const cfg = LAYERS.flights
+                buildEntities(ds, 'flights', data, cfg)
+                scene.requestRender()
+              }
+            })
+            .catch(() => {})
+        }
+      }
     })
 
     // HOVER TOOLTIP
@@ -177,18 +263,26 @@ export default function App() {
       }
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
 
-    // CLICK -- flight detail panel or CCTV stream open
+    // CLICK -- flight detail, video panel, radio panel, or stream open
     handler.setInputAction((click) => {
       const picked = scene.pick(click.position)
       if (picked && picked.id) {
         if (picked.id._flightData) {
           setFlightPanel(picked.id._flightData)
+        } else if (picked.id._radioData) {
+          setRadioPanel(picked.id._radioData)
+        } else if (picked.id._videoData) {
+          searchVideos(picked.id._videoData.query)
         } else if (picked.id._cctvData) {
           const cctv = picked.id._cctvData
           if (cctv.stream_url) {
             window.open(cctv.stream_url, '_blank', 'width=800,height=600')
           } else if (isFinite(cctv.lat) && isFinite(cctv.lon)) {
-            window.open(`https://www.google.com/maps/@${cctv.lat},${cctv.lon},3a,75y,0h,90t/data=!3m1!1e3`, '_blank')
+            viewerRef.current.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(cctv.lon, cctv.lat, 500),
+              orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 },
+              duration: 1.5,
+            })
           }
         }
       }
@@ -222,6 +316,8 @@ export default function App() {
     pollHealth()
 
     return () => {
+      loadingDismissed = true
+      trafficCtrl.destroy()
       handler.destroy()
       viewer.destroy()
     }
@@ -262,15 +358,25 @@ export default function App() {
     const cfg = LAYERS[layerKey]
     const count = buildEntities(ds, layerKey, items, cfg)
 
+    // Build animated arcs for attack/cyber layers
+    if (layerKey === 'missile_tests' || layerKey === 'conflicts') {
+      const arcs = extractArcsFromEvents(items)
+      if (arcs.length > 0) buildArcs(ds, arcs)
+    } else if (layerKey === 'threat_intel' || layerKey === 'cyber') {
+      const arcs = extractCyberArcs(items)
+      if (arcs.length > 0) buildArcs(ds, arcs)
+    }
+
     // Request render after entity changes (needed for requestRenderMode)
     if (viewerRef.current) viewerRef.current.scene.requestRender()
 
-    // If backend is still prefetching (0 items), retry in 10s (up to 2 min)
+    // If backend is still prefetching (0 items), retry with backoff (up to ~5 min)
     if (items.length === 0) {
       const retries = retryCountRef.current[layerKey] || 0
-      if (retries < 12) {
+      if (retries < 18) {
         retryCountRef.current[layerKey] = retries + 1
-        setTimeout(() => loadLayer(layerKey), 10000)
+        const delay = retries < 6 ? 10000 : 20000
+        setTimeout(() => loadLayer(layerKey), delay)
       }
       return
     }
@@ -297,11 +403,17 @@ export default function App() {
           squawk: p.squawk || '????',
           alert: p.squawk_alert,
         }))
-      setSquawkAlerts(emergencies)
+      // Reset dismiss if new/different alerts appear
+      setSquawkAlerts(prev => {
+        const prevKey = prev.map(a => a.callsign + a.squawk).sort().join(',')
+        const newKey = emergencies.map(a => a.callsign + a.squawk).sort().join(',')
+        if (newKey !== prevKey) setDismissedSquawk(false)
+        return emergencies
+      })
     }
 
     // Extract headlines for news ticker
-    if (layerKey === 'news' || layerKey === 'events') {
+    if (layerKey === 'news' || layerKey === 'events' || layerKey === 'telegram_osint' || layerKey === 'reddit_osint') {
       const headlines = items
         .filter(it => {
           const p = it.properties || it
@@ -328,6 +440,138 @@ export default function App() {
       }
     }
   }, [fetchData])
+
+  // Map style switching (satellite, hybrid, dark, darksat, 3d)
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    const layers = imageryLayersRef.current
+    if (!layers.esri) return
+    const scene = viewer.scene
+
+    // Remove 3D tileset if switching away from 3D mode
+    if (mapStyle !== '3d' && tiles3dRef.current) {
+      scene.primitives.remove(tiles3dRef.current)
+      tiles3dRef.current = null
+      scene.globe.show = true
+    }
+    // Remove darksat nightlights overlay when switching away
+    if (mapStyle !== 'darksat' && layers.nightlightsOverlay) {
+      viewer.imageryLayers.remove(layers.nightlightsOverlay)
+      layers.nightlightsOverlay = null
+    }
+
+    switch (mapStyle) {
+      case 'satellite':
+        layers.esri.show = true
+        layers.labels.show = true
+        layers.darkStreets.show = false
+        break
+      case 'dark':
+        layers.esri.show = false
+        layers.labels.show = false
+        layers.darkStreets.show = true
+        layers.darkStreets.alpha = 1.0
+        break
+      case 'darksat':
+        // Dark basemap + VIIRS nightlights overlay
+        layers.esri.show = false
+        layers.labels.show = false
+        layers.darkStreets.show = true
+        layers.darkStreets.alpha = 1.0
+        if (!layers.nightlightsOverlay) {
+          layers.nightlightsOverlay = addGIBSOverlay(viewer, 'nightlights')
+          layers.nightlightsOverlay.alpha = 0.4
+        }
+        break
+      case '3d': {
+        if (!tiles3dRef.current) {
+          // Keep globe visible until tileset actually loads
+          layers.esri.show = true
+          layers.labels.show = false
+          layers.darkStreets.show = false
+          const googleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+          const ionToken = import.meta.env.VITE_CESIUM_ION_TOKEN
+          const loadTileset = googleKey
+            ? Cesium.Cesium3DTileset.fromUrl(
+                `https://tile.googleapis.com/v1/3dtiles/root.json?key=${googleKey}`
+              )
+            : ionToken
+              ? Cesium.Cesium3DTileset.fromIonAssetId(2275207, {
+                  accessToken: ionToken,
+                })
+              : null
+          if (loadTileset) {
+            loadTileset.then(tileset => {
+              tiles3dRef.current = scene.primitives.add(tileset)
+              scene.globe.show = false
+              layers.esri.show = false
+              scene.requestRender()
+            }).catch(() => {
+              setMapStyle('hybrid')
+            })
+          } else {
+            // No API key — fall back to hybrid
+            setMapStyle('hybrid')
+          }
+        }
+        break
+      }
+      case 'hybrid':
+      default:
+        layers.esri.show = true
+        layers.labels.show = true
+        layers.darkStreets.show = true
+        break
+    }
+    scene.requestRender()
+  }, [mapStyle])
+
+  // Visual filter switching
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    removeAllFilters(viewer)
+    const creators = { crt: createCRTStage, nvg: createNVGStage, flir: createFLIRStage, anime: createAnimeStage, reticle: createReticleStage }
+    if (creators[visualFilter]) {
+      viewer.scene.postProcessStages.add(creators[visualFilter]())
+    }
+    viewer.scene.requestRender()
+  }, [visualFilter])
+
+  // GIBS overlay toggling
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    for (const key of Object.keys(GIBS_LAYERS)) {
+      if (gibsActive[key] && !gibsLayerRefs.current[key]) {
+        gibsLayerRefs.current[key] = addGIBSOverlay(viewer, key)
+      } else if (!gibsActive[key] && gibsLayerRefs.current[key]) {
+        removeGIBSOverlay(viewer, gibsLayerRefs.current[key])
+        delete gibsLayerRefs.current[key]
+      }
+    }
+    viewer.scene.requestRender()
+  }, [gibsActive])
+
+  // Google traffic tiles overlay
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+    if (trafficOverlay && !trafficTilesRef.current) {
+      const provider = new Cesium.UrlTemplateImageryProvider({
+        url: 'https://mt0.google.com/vt?lyrs=h,traffic&x={x}&y={y}&z={z}',
+        maximumLevel: 18,
+        credit: new Cesium.Credit('Google Traffic'),
+      })
+      trafficTilesRef.current = viewer.imageryLayers.addImageryProvider(provider)
+      trafficTilesRef.current.alpha = 0.7
+    } else if (!trafficOverlay && trafficTilesRef.current) {
+      viewer.imageryLayers.remove(trafficTilesRef.current)
+      trafficTilesRef.current = null
+    }
+    viewer.scene.requestRender()
+  }, [trafficOverlay])
 
   // Load visible layers and set up refresh intervals
   useEffect(() => {
@@ -366,11 +610,59 @@ export default function App() {
   // Stable callbacks for child components (avoids breaking React.memo)
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), [])
   const closeFlightPanel = useCallback(() => setFlightPanel(null), [])
+  const closeVideoPanel = useCallback(() => setVideoPanel(null), [])
+  const closeAnalysisPanel = useCallback(() => setAnalysisPanel(null), [])
+  const closeRadioPanel = useCallback(() => setRadioPanel(null), [])
+  const flyToLocation = useCallback((lon, lat) => {
+    viewerRef.current?.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500000),
+      duration: 1.5,
+    })
+  }, [])
 
-  // Fly to preset location
+  // Open analysis panel for a region/entity
+  const openAnalysis = useCallback(async (context) => {
+    setAnalysisPanel({ loading: true, briefing: '', threat_level: '', predictions: [], ...context })
+    try {
+      const resp = await fetch(`${API_BASE}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context),
+      })
+      if (resp.ok) {
+        const data = await resp.json()
+        setAnalysisPanel(prev => prev ? { ...prev, ...data, loading: false } : null)
+      } else {
+        setAnalysisPanel(prev => prev ? { ...prev, loading: false, briefing: 'Analysis unavailable. Configure AZURE_OPENAI_ENDPOINT.' } : null)
+      }
+    } catch {
+      setAnalysisPanel(prev => prev ? { ...prev, loading: false, briefing: 'Analysis service unavailable.' } : null)
+    }
+  }, [])
+
+  // Search YouTube videos for a topic
+  const searchVideos = useCallback(async (query) => {
+    setVideoPanel({ loading: true, query, videos: [] })
+    try {
+      const resp = await fetch(`${API_BASE}/youtube_search?q=${encodeURIComponent(query)}`)
+      if (resp.ok) {
+        const data = await resp.json()
+        setVideoPanel(prev => prev ? { ...prev, ...data, loading: false } : null)
+      } else {
+        setVideoPanel(prev => prev ? { ...prev, loading: false } : null)
+      }
+    } catch {
+      setVideoPanel(prev => prev ? { ...prev, loading: false } : null)
+    }
+  }, [])
+
+  // Fly to preset location (with cinematic heading/pitch)
   const flyToPreset = useCallback((preset) => {
+    const heading = Cesium.Math.toRadians(preset.heading ?? 0)
+    const pitch = Cesium.Math.toRadians(preset.pitch ?? -90)
     viewerRef.current?.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(preset.lon, preset.lat, preset.alt),
+      orientation: { heading, pitch, roll: 0 },
       duration: 1.5,
     })
   }, [])
@@ -462,7 +754,7 @@ export default function App() {
       )}
 
       {/* Emergency Squawk Alert Banner */}
-      {squawkAlerts.length > 0 && (
+      {squawkAlerts.length > 0 && !dismissedSquawk && (
         <div className="squawk-alert-banner">
           <span className="squawk-alert-icon">WARNING</span>
           {squawkAlerts.map((a, i) => (
@@ -470,6 +762,7 @@ export default function App() {
               {a.callsign} SQUAWK {a.squawk} — {a.alert}
             </span>
           ))}
+          <button className="squawk-dismiss" onClick={() => setDismissedSquawk(true)} title="Dismiss">&times;</button>
         </div>
       )}
 
@@ -481,6 +774,15 @@ export default function App() {
           onSearchChange={setSearchQuery}
           onSearch={handleSearch}
           cameraAlt={cameraAlt}
+          mapStyle={mapStyle}
+          onMapStyleChange={setMapStyle}
+          onAnalyze={openAnalysis}
+          visualFilter={visualFilter}
+          onVisualFilterChange={setVisualFilter}
+          gibsActive={gibsActive}
+          onGibsToggle={setGibsActive}
+          trafficOverlay={trafficOverlay}
+          onTrafficToggle={setTrafficOverlay}
         />
 
         <Sidebar
@@ -499,6 +801,22 @@ export default function App() {
           flight={flightPanel}
           onClose={closeFlightPanel}
           onTrack={trackFlight}
+        />
+
+        <VideoPanel
+          data={videoPanel}
+          onClose={closeVideoPanel}
+        />
+
+        <AnalysisPanel
+          data={analysisPanel}
+          onClose={closeAnalysisPanel}
+          onFlyTo={flyToLocation}
+        />
+
+        <RadioPanel
+          data={radioPanel}
+          onClose={closeRadioPanel}
         />
 
         <AnalyticsCards analytics={analytics} />

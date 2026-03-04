@@ -26,6 +26,16 @@ from .carriers import CarrierFetcher
 from .threat_intel import ThreatIntelFetcher
 from .signals import SignalsFetcher
 from .missile_tests import MissileTestFetcher
+from .telegram_osint import TelegramOSINTFetcher
+from .rocket_alerts import RocketAlertFetcher
+from .geo_confirmed import GeoConfirmedFetcher
+from .infrastructure import UnderseaCableFetcher
+from .live_streams import LiveStreamFetcher
+from .reddit_osint import RedditOSINTFetcher
+from .equipment_losses import EquipmentLossFetcher
+from .internet_outages import InternetOutageFetcher
+from .gps_jamming import GPSJammingFetcher
+from .eonet import EONETFetcher
 
 __all__ = [
     "BaseFetcher", "FetcherRegistry",
@@ -36,4 +46,8 @@ __all__ = [
     "SanctionsFetcher", "CyberFetcher", "MilitaryBaseFetcher",
     "AirportFetcher", "NOTAMFetcher", "SubmarineFetcher", "CarrierFetcher",
     "ThreatIntelFetcher", "SignalsFetcher", "MissileTestFetcher",
+    "TelegramOSINTFetcher", "RocketAlertFetcher",
+    "GeoConfirmedFetcher", "UnderseaCableFetcher", "LiveStreamFetcher",
+    "RedditOSINTFetcher", "EquipmentLossFetcher", "InternetOutageFetcher",
+    "GPSJammingFetcher", "EONETFetcher",
 ]

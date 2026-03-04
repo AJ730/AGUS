@@ -36,16 +36,26 @@ from .fetchers import (
     NuclearFetcher,
     PiracyFetcher,
     RefugeeFetcher,
+    RocketAlertFetcher,
+    GeoConfirmedFetcher,
+    UnderseaCableFetcher,
+    LiveStreamFetcher,
     SanctionsFetcher,
     SatelliteFetcher,
     SubmarineFetcher,
     CarrierFetcher,
     NewsFetcher,
+    TelegramOSINTFetcher,
     TerrorismFetcher,
     ThreatIntelFetcher,
     SignalsFetcher,
     VesselFetcher,
     WeatherAlertFetcher,
+    RedditOSINTFetcher,
+    EquipmentLossFetcher,
+    InternetOutageFetcher,
+    GPSJammingFetcher,
+    EONETFetcher,
 )
 from .flight_intel import FlightIntelligence
 from .routes import router
@@ -96,6 +106,16 @@ def create_app() -> FastAPI:
     registry.register("threat_intel", ThreatIntelFetcher())
     registry.register("signals", SignalsFetcher())
     registry.register("missile_tests", MissileTestFetcher())
+    registry.register("telegram_osint", TelegramOSINTFetcher())
+    registry.register("rocket_alerts", RocketAlertFetcher())
+    registry.register("geo_confirmed", GeoConfirmedFetcher())
+    registry.register("undersea_cables", UnderseaCableFetcher())
+    registry.register("live_streams", LiveStreamFetcher())
+    registry.register("reddit_osint", RedditOSINTFetcher())
+    registry.register("equipment_losses", EquipmentLossFetcher())
+    registry.register("internet_outages", InternetOutageFetcher())
+    registry.register("gps_jamming", GPSJammingFetcher())
+    registry.register("natural_events", EONETFetcher())
 
     # --- HTTP client ref (created in lifespan) ---
     http_client_ref: dict = {"client": None}
@@ -135,6 +155,16 @@ def create_app() -> FastAPI:
         await asyncio.sleep(2.0)
         await cache.get("events", fetcher_fns["events"])
 
+    async def _refresh_fast_intel():
+        """Refresh high-frequency intel sources."""
+        await asyncio.gather(
+            cache.get("rocket_alerts", fetcher_fns["rocket_alerts"]),
+            cache.get("telegram_osint", fetcher_fns["telegram_osint"]),
+            cache.get("reddit_osint", fetcher_fns["reddit_osint"]),
+            cache.get("internet_outages", fetcher_fns["internet_outages"]),
+            return_exceptions=True,
+        )
+
     async def _refresh_slow():
         """Stagger GDELT-dependent sources to avoid rate limiting."""
         await cache.get("cyber", fetcher_fns["cyber"])
@@ -153,6 +183,11 @@ def create_app() -> FastAPI:
             cache.get("carriers", fetcher_fns["carriers"]),
             cache.get("military_bases", fetcher_fns["military_bases"]),
             cache.get("signals", fetcher_fns["signals"]),
+            cache.get("undersea_cables", fetcher_fns["undersea_cables"]),
+            cache.get("geo_confirmed", fetcher_fns["geo_confirmed"]),
+            cache.get("live_streams", fetcher_fns["live_streams"]),
+            cache.get("equipment_losses", fetcher_fns["equipment_losses"]),
+            cache.get("gps_jamming", fetcher_fns["gps_jamming"]),
             return_exceptions=True,
         )
         await asyncio.sleep(2.0)
@@ -190,7 +225,8 @@ def create_app() -> FastAPI:
         prefetch_task = asyncio.create_task(_background_prefetch())
 
         # Schedule periodic refreshes
-        scheduler.add_job(_refresh_fast, "interval", seconds=30, id="fast")
+        scheduler.add_job(_refresh_fast, "interval", seconds=45, id="fast")
+        scheduler.add_job(_refresh_fast_intel, "interval", seconds=60, id="fast_intel")
         scheduler.add_job(_refresh_medium, "interval", seconds=300, id="medium")
         scheduler.add_job(_refresh_slow, "interval", seconds=1800, id="slow")
         scheduler.add_job(_refresh_very_slow, "interval", seconds=21600, id="very_slow")

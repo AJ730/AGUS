@@ -116,6 +116,50 @@ SELECT ?conflict ?conflictLabel ?lat ?lon ?countryLabel ?startDate WHERE {
             })
         return results
 
+    async def _from_ucdp(self, client: httpx.AsyncClient) -> List[dict]:
+        """UCDP GED API -- academic conflict data (requires UCDP_API_KEY env var)."""
+        api_key = os.getenv("UCDP_API_KEY", "")
+        if not api_key:
+            return []
+        items: List[dict] = []
+        _VIO = {1: "State-based conflict", 2: "Non-state conflict", 3: "One-sided violence"}
+        for version in ("25.1", "24.1"):
+            try:
+                resp = await client.get(
+                    f"https://ucdpapi.pcr.uu.se/api/gedevents/{version}",
+                    params={"pagesize": 1000, "page": 0},
+                    headers={"x-ucdp-access-token": api_key},
+                    timeout=30.0,
+                )
+                resp.raise_for_status()
+                rows = (resp.json().get("Result") or [])
+                for r in rows:
+                    try:
+                        lat, lon = float(r.get("latitude", 0)), float(r.get("longitude", 0))
+                    except (ValueError, TypeError):
+                        continue
+                    if lat == 0 and lon == 0:
+                        continue
+                    items.append({
+                        "event_date": r.get("date_start", ""),
+                        "event_type": _VIO.get(r.get("type_of_violence"), "Conflict"),
+                        "sub_event_type": r.get("conflict_name", ""),
+                        "actor1": r.get("side_a", ""),
+                        "actor2": r.get("side_b", ""),
+                        "country": r.get("country", "Unknown"),
+                        "location": r.get("where_description", ""),
+                        "latitude": lat, "longitude": lon,
+                        "fatalities": int(r.get("best", 0) or 0),
+                        "notes": r.get("source_headline", ""),
+                        "source": "UCDP",
+                    })
+                if items:
+                    logger.info("UCDP v%s returned %d events", version, len(items))
+                    return items
+            except Exception as exc:
+                logger.warning("UCDP v%s failed: %s", version, exc)
+        return items
+
     async def _from_gdelt(self, client: httpx.AsyncClient) -> List[dict]:
         query = "(conflict OR battle OR airstrike OR shelling)"
         features = await self._gdelt(client, query, "7D", 500)
@@ -128,4 +172,16 @@ SELECT ?conflict ?conflictLabel ?lat ?lon ?countryLabel ?startDate WHERE {
         } for f in features if (f.get("geometry") or {}).get("coordinates")]
 
     async def fetch(self, client: httpx.AsyncClient) -> List[dict]:
-        return await self._try_sources(client, self._from_acled, self._from_wikidata, self._from_gdelt)
+        # Try premium auth sources first (return exclusively if available)
+        for auth_fn in (self._from_acled, self._from_ucdp):
+            try:
+                result = await auth_fn(client)
+                if result:
+                    return result
+            except Exception as exc:
+                logger.warning("%s: %s", auth_fn.__name__, exc)
+
+        # No auth sources available -- combine free sources for best coverage
+        return await self._collect(
+            client, self._from_wikidata, self._from_gdelt,
+        )

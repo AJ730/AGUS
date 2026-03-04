@@ -9,6 +9,7 @@ import httpx
 
 from .base import BaseFetcher
 from .conflicts import ConflictFetcher
+from .launch_sites import infer_origin
 
 logger = logging.getLogger("agus.fetchers")
 
@@ -86,20 +87,30 @@ class MissileTestFetcher(BaseFetcher):
             else:
                 etype = "explosion"
             notes = r.get("notes", "")
-            results.append({
+            actor1 = r.get("actor1", "")
+            country = r.get("country", "")
+            event = {
                 "name": notes[:120] if notes else sub or "Explosion/Remote Violence",
                 "date": r.get("event_date", ""),
-                "country": r.get("country", ""),
+                "country": country,
                 "region": r.get("admin1", ""),
                 "latitude": lat,
                 "longitude": lon,
                 "type": etype,
                 "sub_type": sub,
-                "actor": r.get("actor1", ""),
+                "actor": actor1,
                 "target": r.get("actor2", ""),
                 "fatalities": int(r.get("fatalities", 0) or 0),
                 "source": r.get("source", "ACLED"),
-            })
+            }
+            # Infer launch origin for arc rendering
+            origin = infer_origin(actor1, country)
+            if origin:
+                event["origin_latitude"] = origin[0]
+                event["origin_longitude"] = origin[1]
+                event["launch_site"] = origin[2]
+                event["origin_confidence"] = origin[3]
+            results.append(event)
         return results
 
     async def _from_gdelt(self, client: httpx.AsyncClient) -> List[dict]:

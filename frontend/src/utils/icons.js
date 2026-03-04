@@ -778,7 +778,368 @@ export function getAirportIcon(color = '#64748b', size = 32) {
   })
 }
 
-// ==================== 23. MISSILE (missile with exhaust) ====================
+// ==================== 23. TELEGRAM (paper plane) ====================
+export function getTelegramIcon(color = '#0088cc', size = 32) {
+  return cached('telegram', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.7 * s
+    // Paper plane shape
+    ctx.beginPath()
+    ctx.moveTo(cx - 12 * s, cy + 2 * s)     // left
+    ctx.lineTo(cx + 12 * s, cy - 8 * s)     // top right (tip)
+    ctx.lineTo(cx + 2 * s, cy + 12 * s)     // bottom right
+    ctx.lineTo(cx - 2 * s, cy + 4 * s)      // inner fold
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Wing fold line
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'
+    ctx.lineWidth = 1 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 2 * s, cy + 4 * s)
+    ctx.lineTo(cx + 12 * s, cy - 8 * s)
+    ctx.stroke()
+    // Inner triangle
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'
+    ctx.beginPath()
+    ctx.moveTo(cx - 2 * s, cy + 4 * s)
+    ctx.lineTo(cx + 2 * s, cy + 12 * s)
+    ctx.lineTo(cx + 2 * s, cy + 5 * s)
+    ctx.closePath()
+    ctx.fill()
+  })
+}
+
+// ==================== 24. ROCKET ALERT (siren / alert symbol) ====================
+export function getRocketAlertIcon(color = '#ff0000', size = 32) {
+  return cached('rocketalert', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Pulsing red circle background
+    ctx.fillStyle = color
+    ctx.globalAlpha = 0.3
+    ctx.beginPath()
+    ctx.arc(cx, cy, 14 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1.0
+    // Inner solid circle
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, 10 * s, 0, Math.PI * 2)
+    ctx.fill()
+    clearShadow(ctx)
+    // Rocket/missile silhouette
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - 8 * s)           // nose
+    ctx.lineTo(cx - 2 * s, cy - 4 * s)
+    ctx.lineTo(cx - 2 * s, cy + 4 * s)
+    ctx.lineTo(cx - 4 * s, cy + 7 * s)   // left fin
+    ctx.lineTo(cx - 2 * s, cy + 5 * s)
+    ctx.lineTo(cx, cy + 7 * s)           // exhaust center
+    ctx.lineTo(cx + 2 * s, cy + 5 * s)
+    ctx.lineTo(cx + 4 * s, cy + 7 * s)   // right fin
+    ctx.lineTo(cx + 2 * s, cy + 4 * s)
+    ctx.lineTo(cx + 2 * s, cy - 4 * s)
+    ctx.closePath()
+    ctx.fill()
+  })
+}
+
+// ==================== 25. GEO CONFIRMED (verified checkmark) ====================
+export function getGeoConfirmedIcon(color = '#14b8a6', size = 32) {
+  return cached('geoconfirmed', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Circle background
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, 12 * s, 0, Math.PI * 2)
+    ctx.fill()
+    clearShadow(ctx)
+    // Checkmark
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 2.5 * s
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(cx - 6 * s, cy)
+    ctx.lineTo(cx - 2 * s, cy + 5 * s)
+    ctx.lineTo(cx + 7 * s, cy - 5 * s)
+    ctx.stroke()
+  })
+}
+
+// ==================== 26. UNDERSEA CABLE (wave line) ====================
+export function getUnderseaCableIcon(color = '#06b6d4', size = 32) {
+  return cached('cable', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2 * s
+    ctx.lineCap = 'round'
+    // Sine wave pattern
+    ctx.beginPath()
+    ctx.moveTo(cx - 12 * s, cy)
+    for (let x = -12; x <= 12; x++) {
+      const px = cx + x * s
+      const py = cy + Math.sin(x * 0.8) * 5 * s
+      ctx.lineTo(px, py)
+    }
+    ctx.stroke()
+    clearShadow(ctx)
+    // Landing point dots
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx - 12 * s, cy, 2.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx + 12 * s, cy, 2.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 27. LIVE STREAM (broadcast tower with signal) ====================
+export function getLiveStreamIcon(color = '#ec4899', size = 32) {
+  return cached('livestream', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.8 * s
+    // TV screen body
+    ctx.beginPath()
+    ctx.roundRect(cx - 10 * s, cy - 8 * s, 20 * s, 14 * s, 2 * s)
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Screen inner (dark)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx.beginPath()
+    ctx.roundRect(cx - 8 * s, cy - 6 * s, 16 * s, 10 * s, 1 * s)
+    ctx.fill()
+    // Play triangle
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(cx - 3 * s, cy - 4 * s)
+    ctx.lineTo(cx - 3 * s, cy + 3 * s)
+    ctx.lineTo(cx + 4 * s, cy - 0.5 * s)
+    ctx.closePath()
+    ctx.fill()
+    // LIVE dot (red recording indicator)
+    ctx.fillStyle = '#ef4444'
+    ctx.beginPath()
+    ctx.arc(cx + 5 * s, cy - 4 * s, 1.8 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // LIVE glow
+    ctx.fillStyle = 'rgba(239,68,68,0.3)'
+    ctx.beginPath()
+    ctx.arc(cx + 5 * s, cy - 4 * s, 3 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // Stand
+    ctx.fillStyle = color
+    ctx.fillRect(cx - 3 * s, cy + 6 * s, 6 * s, 2 * s)
+    ctx.fillRect(cx - 6 * s, cy + 8 * s, 12 * s, 2 * s)
+  })
+}
+
+// ==================== 28. REDDIT (alien head) ====================
+export function getRedditIcon(color = '#ff4500', size = 32) {
+  return cached('reddit', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Circle background
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, 13 * s, 0, Math.PI * 2)
+    ctx.fill()
+    clearShadow(ctx)
+    // Face (white circle)
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(cx, cy + 1 * s, 9 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // Eyes
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx - 3.5 * s, cy - 1 * s, 2 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx + 3.5 * s, cy - 1 * s, 2 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // Mouth (smile arc)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1.2 * s
+    ctx.beginPath()
+    ctx.arc(cx, cy + 2 * s, 4 * s, 0.2, Math.PI - 0.2)
+    ctx.stroke()
+    // Antenna
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 1.2 * s
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - 9 * s)
+    ctx.lineTo(cx + 4 * s, cy - 13 * s)
+    ctx.stroke()
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(cx + 4 * s, cy - 13 * s, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // Ears
+    ctx.beginPath()
+    ctx.arc(cx - 9 * s, cy - 4 * s, 3 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx + 9 * s, cy - 4 * s, 3 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 29. EQUIPMENT LOSS (broken tank) ====================
+export function getEquipmentLossIcon(color = '#92400e', size = 32) {
+  return cached('eqloss', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Tank hull
+    ctx.beginPath()
+    ctx.roundRect(cx - 10 * s, cy + 2 * s, 20 * s, 8 * s, 2 * s)
+    ctx.fill(); ctx.stroke()
+    // Turret
+    ctx.beginPath()
+    ctx.roundRect(cx - 5 * s, cy - 4 * s, 10 * s, 7 * s, 2 * s)
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Gun barrel
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2 * s
+    ctx.beginPath()
+    ctx.moveTo(cx + 5 * s, cy - 1 * s)
+    ctx.lineTo(cx + 14 * s, cy - 4 * s)
+    ctx.stroke()
+    // Tracks (wheels)
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'
+    for (let i = -8; i <= 8; i += 4) {
+      ctx.beginPath()
+      ctx.arc(cx + i * s, cy + 10 * s, 2.5 * s, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // X mark (destroyed)
+    ctx.strokeStyle = '#ef4444'
+    ctx.lineWidth = 2.5 * s
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(cx - 6 * s, cy - 8 * s)
+    ctx.lineTo(cx + 6 * s, cy + 4 * s)
+    ctx.moveTo(cx + 6 * s, cy - 8 * s)
+    ctx.lineTo(cx - 6 * s, cy + 4 * s)
+    ctx.stroke()
+  })
+}
+
+// ==================== 30. INTERNET OUTAGE (disconnected plug) ====================
+export function getInternetOutageIcon(color = '#7c3aed', size = 32) {
+  return cached('netoutage', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Globe outline
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1.5 * s
+    ctx.beginPath()
+    ctx.arc(cx, cy, 12 * s, 0, Math.PI * 2)
+    ctx.stroke()
+    // Latitude lines
+    ctx.beginPath()
+    ctx.ellipse(cx, cy, 12 * s, 5 * s, 0, 0, Math.PI * 2)
+    ctx.stroke()
+    // Longitude line
+    ctx.beginPath()
+    ctx.ellipse(cx, cy, 5 * s, 12 * s, 0, 0, Math.PI * 2)
+    ctx.stroke()
+    clearShadow(ctx)
+    // Red X overlay (outage indicator)
+    ctx.strokeStyle = '#ef4444'
+    ctx.lineWidth = 3 * s
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(cx - 7 * s, cy - 7 * s)
+    ctx.lineTo(cx + 7 * s, cy + 7 * s)
+    ctx.moveTo(cx + 7 * s, cy - 7 * s)
+    ctx.lineTo(cx - 7 * s, cy + 7 * s)
+    ctx.stroke()
+  })
+}
+
+// ==================== 31. GPS JAMMING (satellite with interference) ====================
+export function getGPSJammingIcon(color = '#e11d48', size = 32) {
+  return cached('gpsjam', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Outer warning circle
+    ctx.fillStyle = color
+    ctx.globalAlpha = 0.2
+    ctx.beginPath()
+    ctx.arc(cx, cy, 14 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1.0
+    // Inner circle
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, 10 * s, 0, Math.PI * 2)
+    ctx.fill()
+    clearShadow(ctx)
+    // Satellite icon (white)
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.roundRect(cx - 2 * s, cy - 2 * s, 4 * s, 4 * s, 0.5 * s)
+    ctx.fill()
+    // Solar panels
+    ctx.fillRect(cx - 8 * s, cy - 1.5 * s, 5 * s, 3 * s)
+    ctx.fillRect(cx + 3 * s, cy - 1.5 * s, 5 * s, 3 * s)
+    // Lightning bolt (interference)
+    ctx.fillStyle = '#fbbf24'
+    ctx.beginPath()
+    ctx.moveTo(cx + 1 * s, cy - 7 * s)
+    ctx.lineTo(cx - 2 * s, cy - 2 * s)
+    ctx.lineTo(cx, cy - 2 * s)
+    ctx.lineTo(cx - 1 * s, cy + 3 * s)
+    ctx.lineTo(cx + 3 * s, cy - 1 * s)
+    ctx.lineTo(cx + 1 * s, cy - 1 * s)
+    ctx.closePath()
+    ctx.fill()
+    // Interference waves
+    ctx.strokeStyle = '#fbbf24'
+    ctx.lineWidth = 1 * s
+    for (let i = 0; i < 2; i++) {
+      const r = (6 + i * 3) * s
+      ctx.globalAlpha = 0.8 - i * 0.3
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, Math.PI * 0.7, Math.PI * 1.3)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+  })
+}
+
+// ==================== 32. NATURAL EVENT (earth with exclamation) ====================
+export function getNaturalEventIcon(color = '#ff6b35', size = 32) {
+  return cached('natevt', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Earth circle
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, 11 * s, 0, Math.PI * 2)
+    ctx.fill()
+    clearShadow(ctx)
+    // Continent-like shape
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'
+    ctx.beginPath()
+    ctx.ellipse(cx - 2 * s, cy - 2 * s, 6 * s, 4 * s, 0.3, 0, Math.PI * 2)
+    ctx.fill()
+    // Exclamation mark
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `bold ${14 * s}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('!', cx, cy)
+  })
+}
+
+// ==================== 33. MISSILE (missile with exhaust) ====================
 export function getMissileIcon(color = '#dc2626', size = 32) {
   return cached('missile', color, size, (ctx, cx, cy, s) => {
     applyShadow(ctx, s)

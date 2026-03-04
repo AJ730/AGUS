@@ -30,14 +30,20 @@ ABUSEIPDB_API_KEY: str = os.getenv("ABUSEIPDB_API_KEY", "")
 WINDY_API_KEY: str = os.getenv("WINDY_API_KEY", "")
 OPENAIP_API_KEY: str = os.getenv("OPENAIP_API_KEY", "")
 OTX_API_KEY: str = os.getenv("OTX_API_KEY", "")
+UCDP_API_KEY: str = os.getenv("UCDP_API_KEY", "")
+
+# Azure OpenAI (for LLM intelligence analysis)
+AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+AZURE_OPENAI_KEY: str = os.getenv("AZURE_OPENAI_KEY", "")
+AZURE_OPENAI_DEPLOYMENT: str = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
 
 # ---------------------------------------------------------------------------
 # HTTP client settings
 # ---------------------------------------------------------------------------
-REQUEST_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
+REQUEST_TIMEOUT = httpx.Timeout(connect=15.0, read=45.0, write=10.0, pool=30.0)
 CONNECTION_LIMITS = httpx.Limits(
-    max_connections=100,
-    max_keepalive_connections=30,
+    max_connections=200,
+    max_keepalive_connections=50,
     keepalive_expiry=120,
 )
 
@@ -126,8 +132,8 @@ LAYER_CONFIG: dict[str, dict] = {
         "source_url": "https://query.wikidata.org/sparql (submarine bases)",
     },
     "carriers": {
-        "ttl": 86400,
-        "source_url": "https://query.wikidata.org/sparql (aircraft carriers/warships)",
+        "ttl": 3600,
+        "source_url": "Google News + USNI + Naval News + GDELT + ADS-B (live carrier positions)",
     },
     "news": {
         "ttl": 900,
@@ -144,5 +150,45 @@ LAYER_CONFIG: dict[str, dict] = {
     "missile_tests": {
         "ttl": 600,
         "source_url": "https://acleddata.com/api/acled/read (live strikes/bombings)",
+    },
+    "telegram_osint": {
+        "ttl": 300,
+        "source_url": "Telegram OSINT channels via RSS bridges (Aurora Intel, BNO, etc.)",
+    },
+    "rocket_alerts": {
+        "ttl": 60,
+        "source_url": "https://www.oref.org.il/WarningMessages/alert/alerts.json (OREF) + GDELT",
+    },
+    "geo_confirmed": {
+        "ttl": 3600,
+        "source_url": "GeoConfirmed + Bellingcat (osint-geo-extractor)",
+    },
+    "undersea_cables": {
+        "ttl": 86400,
+        "source_url": "https://www.submarinecablemap.com/api/v3/ (TeleGeography)",
+    },
+    "live_streams": {
+        "ttl": 86400,
+        "source_url": "Curated 24/7 live news broadcast streams (Al Jazeera, Sky, France24, etc.)",
+    },
+    "reddit_osint": {
+        "ttl": 600,
+        "source_url": "Reddit OSINT subreddits (worldnews, CombatFootage, geopolitics, CredibleDefense, etc.)",
+    },
+    "equipment_losses": {
+        "ttl": 3600,
+        "source_url": "https://ukr.warspotting.net/api/ (WarSpotting verified losses) + GDELT",
+    },
+    "internet_outages": {
+        "ttl": 900,
+        "source_url": "https://api.ioda.inetintel.cc.gatech.edu/v2/ (IODA) + GDELT",
+    },
+    "gps_jamming": {
+        "ttl": 3600,
+        "source_url": "Known EW zones (Eurocontrol/OPSGROUP) + GDELT GPS interference reports",
+    },
+    "natural_events": {
+        "ttl": 1800,
+        "source_url": "https://eonet.gsfc.nasa.gov/api/v3/events",
     },
 }
