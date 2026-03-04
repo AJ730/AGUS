@@ -25,20 +25,20 @@ const RadioPanel = React.memo(function RadioPanel({ data, onClose }) {
       </div>
 
       {/* SDR Info */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: '600', color: 'var(--accent)', marginBottom: '4px' }}>
+      <div className="radio-info">
+        <div className="radio-name">
           {name}
         </div>
         {data.location && (
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{data.location}</div>
+          <div className="radio-location">{data.location}</div>
         )}
         {data.frequency_range && (
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+          <div className="radio-freq">
             FREQ: {data.frequency_range}
           </div>
         )}
         {data.users_max && (
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <div className="radio-users">
             USERS: {data.users || 0}/{data.users_max}
           </div>
         )}
@@ -53,12 +53,11 @@ const RadioPanel = React.memo(function RadioPanel({ data, onClose }) {
           allow="autoplay; microphone"
         />
       ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+        <div className="radio-empty">
           No web interface available for this receiver.
           <br />
           <button
-            className="track-btn"
-            style={{ marginTop: '16px', maxWidth: '200px' }}
+            className="track-btn radio-open-btn"
             onClick={() => sdrUrl && window.open(sdrUrl, '_blank')}
           >
             OPEN IN NEW TAB

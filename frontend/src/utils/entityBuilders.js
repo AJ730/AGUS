@@ -60,6 +60,7 @@ function buildFlight(ds, props, geom, lon, lat, cfg) {
       rotation: -headingRad,  // CesiumJS rotation is counter-clockwise
       alignedAxis: Cesium.Cartesian3.UNIT_Z,
       heightReference: Cesium.HeightReference.NONE,
+      disableDepthTestDistance: 1e5,
       scaleByDistance: new Cesium.NearFarScalar(1e3, 1.8, 1e7, 0.3),
     },
   })
@@ -102,6 +103,13 @@ function buildFlight(ds, props, geom, lon, lat, cfg) {
     registration: props.registration || '',
     flight_route: props.flight_route || '',
   }
+  // Dead-reckoning motion data for real-time animation
+  entity._motionData = {
+    lon, lat, alt,
+    heading,
+    speed,      // knots
+    timestamp: Date.now(),
+  }
 }
 
 function buildConflict(ds, props, geom, lon, lat, cfg) {
@@ -115,7 +123,8 @@ function buildConflict(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.2, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -145,7 +154,8 @@ function buildEvent(ds, props, geom, lon, lat, cfg) {
       width: 20,
       height: 20,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.2, 1e7, 0.3),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -175,7 +185,8 @@ function buildNews(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.2, 1e7, 0.3),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -203,7 +214,8 @@ function buildCctv(ds, props, geom, lon, lat, cfg) {
       width: 24,
       height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
   entity._tooltipData = {
@@ -233,7 +245,8 @@ function buildFire(ds, props, geom, lon, lat, cfg) {
       width: fireSize,
       height: fireSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.3),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.5, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -266,7 +279,8 @@ function buildEarthquake(ds, props, geom, lon, lat, cfg) {
       width: quakeSize,
       height: quakeSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -293,7 +307,8 @@ function buildWeatherAlert(ds, props, geom, lon, lat, cfg) {
       width: 22,
       height: 22,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -319,7 +334,8 @@ function buildNuclear(ds, props, geom, lon, lat, cfg) {
       width: 22,
       height: 22,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.3),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -343,7 +359,8 @@ function buildVessel(ds, props, geom, lon, lat, cfg) {
       rotation: -Cesium.Math.toRadians(heading),
       alignedAxis: Cesium.Cartesian3.UNIT_Z,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.2),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.4),
     },
   })
   entity._tooltipData = {
@@ -364,6 +381,13 @@ function buildVessel(ds, props, geom, lon, lat, cfg) {
       Coords: lat.toFixed(4) + ', ' + lon.toFixed(4),
     },
   }
+  // Dead-reckoning motion data for real-time animation
+  entity._motionData = {
+    lon, lat, alt: 0,
+    heading,
+    speed: props.speed || 0,  // knots
+    timestamp: Date.now(),
+  }
 }
 
 function buildSubmarine(ds, props, geom, lon, lat, cfg) {
@@ -380,7 +404,8 @@ function buildSubmarine(ds, props, geom, lon, lat, cfg) {
       width: 24,
       height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -403,7 +428,8 @@ function buildPiracy(ds, props, geom, lon, lat, cfg) {
       width: 24,
       height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -423,7 +449,8 @@ function buildTerrorism(ds, props, geom, lon, lat, cfg) {
       width: 22,
       height: 22,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -443,7 +470,8 @@ function buildCyber(ds, props, geom, lon, lat, cfg) {
       width: 20,
       height: 20,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -471,7 +499,8 @@ function buildMilitaryBase(ds, props, geom, lon, lat, cfg) {
       width: 22,
       height: 22,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -572,7 +601,8 @@ function buildRefugee(ds, props, geom, lon, lat, cfg) {
       width: 22,
       height: 22,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -592,7 +622,8 @@ function buildSanction(ds, props, geom, lon, lat, cfg) {
       width: 24,
       height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -616,7 +647,8 @@ function buildSatellite(ds, props, geom, lon, lat, cfg) {
       width: isISS ? 24 : 16,
       height: isISS ? 24 : 16,
       heightReference: Cesium.HeightReference.NONE,
-      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 2e7, 0.3),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.5, 2e7, 0.4),
     },
   })
   if (isISS) {
@@ -628,7 +660,7 @@ function buildSatellite(ds, props, geom, lon, lat, cfg) {
       outlineWidth: 2,
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
       pixelOffset: new Cesium.Cartesian2(0, -18),
-      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.0, 2e7, 0.3),
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 2e7, 0.4),
     }
   }
   entity._tooltipData = {
@@ -648,7 +680,8 @@ function buildAirport(ds, props, geom, lon, lat, cfg) {
       width: 16,
       height: 16,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.3, 5e6, 0.2),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 5e6, 0.4),
     },
   })
   entity._tooltipData = {
@@ -706,7 +739,8 @@ function buildCarrier(ds, props, geom, lon, lat, cfg) {
       width: isDeployed ? 32 : 24,
       height: isDeployed ? 32 : 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.6),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.5, 1e7, 0.7),
     },
   })
 
@@ -729,6 +763,13 @@ function buildCarrier(ds, props, geom, lon, lat, cfg) {
   if (props.headline && props.url) {
     entity._cctvData = { name: props.name, stream_url: props.url }
   }
+  // Dead-reckoning motion data for real-time animation
+  entity._motionData = {
+    lon, lat, alt: 0,
+    heading: props.heading || 0,
+    speed: props.speed || 0,
+    timestamp: Date.now(),
+  }
 }
 
 function buildThreatIntel(ds, props, geom, lon, lat, cfg) {
@@ -746,7 +787,8 @@ function buildThreatIntel(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -771,6 +813,7 @@ function buildSignals(ds, props, geom, lon, lat, cfg) {
       width: 20,
       height: 20,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
       scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.3),
     },
   })
@@ -815,7 +858,8 @@ function buildMissileTest(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.6),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.5, 1e7, 0.7),
     },
   })
 
@@ -863,7 +907,8 @@ function buildTelegramOsint(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -894,7 +939,8 @@ function buildRocketAlert(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.5, 1e7, 0.6),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.5, 1e7, 0.7),
     },
   })
 
@@ -926,7 +972,8 @@ function buildGeoConfirmed(ds, props, geom, lon, lat, cfg) {
       width: 24,
       height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
   entity._tooltipData = {
@@ -952,7 +999,8 @@ function buildUnderseaCable(ds, props, geom, lon, lat, cfg) {
       width: 20,
       height: 20,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.3, 1e7, 0.3),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -976,7 +1024,8 @@ function buildLiveStream(ds, props, geom, lon, lat, cfg) {
       width: 26,
       height: 26,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
   entity._tooltipData = {
@@ -1009,7 +1058,8 @@ function buildRedditOsint(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.4),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
     },
   })
   entity._tooltipData = {
@@ -1046,7 +1096,8 @@ function buildEquipmentLoss(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
   entity._tooltipData = {
@@ -1081,7 +1132,8 @@ function buildInternetOutage(ds, props, geom, lon, lat, cfg) {
       width: iconSize,
       height: iconSize,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
   entity._tooltipData = {
@@ -1139,7 +1191,8 @@ function buildGPSJamming(ds, props, geom, lon, lat, cfg) {
       width: 24,
       height: 24,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
 }
@@ -1154,7 +1207,8 @@ function buildNaturalEvent(ds, props, geom, lon, lat, cfg) {
       width: 28,
       height: 28,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      scaleByDistance: new Cesium.NearFarScalar(1e4, 1.3, 1e7, 0.5),
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.6),
     },
   })
   entity._tooltipData = {

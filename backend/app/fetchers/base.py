@@ -88,7 +88,7 @@ class BaseFetcher(ABC):
                 features = resp.json().get("features") or []
                 if features:
                     return features
-        except Exception:
+        except (httpx.HTTPError, httpx.TimeoutException, ValueError):
             pass
 
         # Fallback: DOC API with fresh client (avoids stale connection pool)
@@ -112,7 +112,7 @@ class BaseFetcher(ABC):
             key=len, reverse=True,
         )
 
-        def _geocode_article(art: dict):
+        def _geocode_article(art: dict) -> tuple:
             """Geocode by title content first, then fallback to sourcecountry."""
             title = (art.get("title") or "").lower()
             for name in country_names:

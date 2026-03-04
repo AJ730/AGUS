@@ -145,7 +145,7 @@ async def flights_viewport(request: Request, lat: float = 0, lon: float = 0, dis
                         existing[enriched["icao24"]] = enriched
                         new_count += 1
                 break  # one success is enough
-            except Exception:
+            except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError):
                 continue
 
     result = list(existing.values())
@@ -495,7 +495,7 @@ async def correlate(request: Request):
         data = slot.entry.data
         return data if isinstance(data, list) else []
 
-    def _haversine_km(lat1, lon1, lat2, lon2):
+    def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Approximate distance in km between two points."""
         R = 6371
         dlat = math.radians(lat2 - lat1)
@@ -503,7 +503,7 @@ async def correlate(request: Request):
         a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
         return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-    def _extract_coords(item):
+    def _extract_coords(item: dict) -> tuple:
         lat = item.get("latitude") or item.get("lat")
         lon = item.get("longitude") or item.get("lon") or item.get("lng")
         try:
@@ -642,7 +642,7 @@ async def analyze(request: Request):
     """AI-powered intelligence analysis using Azure OpenAI."""
     try:
         body = await request.json()
-    except Exception:
+    except (ValueError, KeyError):
         body = {}
 
     # Gather context from cached data
@@ -884,7 +884,7 @@ async def youtube_search(request: Request, q: str = ""):
                         "date": date,
                         "relevance": _relevance_score(title),
                     })
-    except Exception as exc:
+    except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as exc:
         logger.debug("GDELT video search: %s", exc)
 
     # Source 5: GDELT TV API — find TV broadcast clips mentioning the query
@@ -919,7 +919,7 @@ async def youtube_search(request: Request, q: str = ""):
                         "date": clip.get("date", ""),
                         "relevance": _relevance_score(snippet),
                     })
-    except Exception as exc:
+    except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as exc:
         logger.debug("GDELT TV search: %s", exc)
 
     # Source 6: Piped/Invidious API fallback (if we have fewer than 5 videos)
@@ -958,7 +958,7 @@ async def youtube_search(request: Request, q: str = ""):
                             })
                         if len(videos) >= 10:
                             break
-            except Exception as exc:
+            except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as exc:
                 logger.debug("Piped search %s: %s", piped_url, exc)
 
     # Sort all videos by relevance (best matches first)
@@ -1045,7 +1045,7 @@ async def _fetch_flight_detail(client: httpx.AsyncClient, icao24: str, intel: Fl
                 "is_military": intel.is_military(callsign, icao24) or intel.is_military_dbflags(ac.get("dbFlags", 0)),
                 "squawk_alert": intel.detect_squawk_alert(squawk) if squawk else None,
             }
-    except Exception as exc:
+    except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as exc:
         logger.warning("adsb.lol detail fetch failed for %s: %s", icao24, exc)
 
     # Track/trace from airplanes.live (per-aircraft lookup)
@@ -1092,7 +1092,7 @@ async def _fetch_flight_detail(client: httpx.AsyncClient, icao24: str, intel: Fl
                         "altitude": wp[3],
                     })
             result["track"] = waypoints
-        except Exception:
+        except (httpx.HTTPError, httpx.TimeoutException):
             pass  # OpenSky often 429s, silently fall through
 
     return result
@@ -1139,7 +1139,7 @@ async def flight_detail(icao24: str, request: Request):
                     _flight_detail_cache.pop(k, None)
                     _flight_detail_locks.pop(k, None)
             return JSONResponse(content=data)
-        except Exception as exc:
+        except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as exc:
             logger.error("Flight detail fetch failed for %s: %s", icao24, exc)
             if entry and entry.data is not None:
                 return JSONResponse(content=entry.data)

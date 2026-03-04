@@ -12,7 +12,7 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
     <div className={'analysis-panel' + (data ? ' open' : '')}>
       <div className="panel-header">
         <h2>INTEL ANALYSIS</h2>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="analysis-header-actions">
           <button
             className="map-style-btn"
             style={terminalMode ? { color: '#33ff33', background: 'rgba(51, 255, 51, 0.1)' } : {}}
@@ -28,9 +28,9 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
       <div className={'analysis-body' + (terminalMode ? ' terminal-mode' : '')}>
         {/* Loading */}
         {data.loading && (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div className="loading-spinner" style={{ margin: '0 auto 16px' }} />
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '2px', color: 'var(--text-muted)' }}>
+          <div className="analysis-loading">
+            <div className="loading-spinner analysis-loading-spinner" />
+            <div className="analysis-loading-text">
               ANALYZING INTELLIGENCE DATA...
             </div>
           </div>
@@ -50,7 +50,7 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
         {data.briefing && (
           <div className="analysis-section">
             <div className="analysis-section-header">SITUATION REPORT</div>
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+            <div className="analysis-preformatted">
               {data.briefing}
             </div>
           </div>
@@ -60,7 +60,7 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
         {data.satellite_intel && (
           <div className="analysis-section">
             <div className="analysis-section-header">SATELLITE INTELLIGENCE</div>
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+            <div className="analysis-preformatted">
               {data.satellite_intel}
             </div>
           </div>
@@ -77,9 +77,9 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
                 onClick={() => pred.lon && pred.lat && onFlyTo && onFlyTo(pred.lon, pred.lat)}
                 title={pred.lon ? 'Click to fly to location' : ''}
               >
-                <div style={{ fontSize: '13px', marginBottom: '4px' }}>{pred.text || pred}</div>
+                <div className="analysis-prediction-text">{pred.text || pred}</div>
                 {pred.confidence && (
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  <div className="analysis-prediction-confidence">
                     Confidence: {pred.confidence}
                   </div>
                 )}
@@ -93,7 +93,7 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
           <div className="analysis-section">
             <div className="analysis-section-header">SOURCES</div>
             {sources.map((src, i) => (
-              <div key={i} style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '2px 0' }}>
+              <div key={i} className="analysis-source-item">
                 [{i + 1}] {src}
               </div>
             ))}
@@ -102,7 +102,7 @@ const AnalysisPanel = React.memo(function AnalysisPanel({ data, onClose, onFlyTo
 
         {/* No data fallback */}
         {!data.loading && !data.briefing && !data.threat_level && (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+          <div className="analysis-empty">
             Configure AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY<br />
             environment variables to enable AI analysis.
           </div>

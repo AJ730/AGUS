@@ -25,7 +25,7 @@ _COUNTRY_NAMES = sorted(
 )
 
 
-def _geocode_title(title: str):
+def _geocode_title(title: str) -> tuple | None:
     """Find first country name in title, return (name, lat, lon) or None."""
     title_lower = title.lower()
     for name in _COUNTRY_NAMES:

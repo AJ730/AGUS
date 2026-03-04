@@ -7,6 +7,7 @@ import { clamp, escapeHtml } from './utils/helpers'
 import { buildEntities } from './utils/entityBuilders'
 import { buildArcs, extractArcsFromEvents, extractCyberArcs } from './utils/arcBuilder'
 import { createCRTStage, createNVGStage, createFLIRStage, createAnimeStage, createReticleStage, removeAllFilters } from './utils/visualFilters'
+import { updateEntityMotion } from './utils/motionTracker'
 import { GIBS_LAYERS, addGIBSOverlay, removeGIBSOverlay } from './utils/gibsLayers'
 import { StreetTrafficController } from './utils/streetTraffic'
 import Sidebar from './components/Sidebar'
@@ -178,6 +179,17 @@ export default function App() {
     const trafficCtrl = new StreetTrafficController(viewer)
     streetTrafficRef.current = trafficCtrl
 
+    // Real-time entity motion: dead-reckoning for flights, vessels, carriers
+    // Extrapolates positions based on heading + speed between API refreshes
+    const motionInterval = setInterval(() => {
+      const ds = dataSourcesRef.current
+      const moved =
+        updateEntityMotion(ds.flights) +
+        updateEntityMotion(ds.vessels) +
+        updateEntityMotion(ds.carriers)
+      if (moved > 0) scene.requestRender()
+    }, 200) // 5fps smooth dead reckoning
+
     // Camera altitude tracking + altitude-based street/satellite crossfade (throttled)
     let lastAltUpdate = 0
     let lastVpFetch = 0
@@ -317,6 +329,7 @@ export default function App() {
 
     return () => {
       loadingDismissed = true
+      clearInterval(motionInterval)
       trafficCtrl.destroy()
       handler.destroy()
       viewer.destroy()

@@ -1261,6 +1261,140 @@ html, body, #root {
   border-color: var(--accent);
 }
 
+/* ---------- Analysis Panel Extracted Styles ---------- */
+.analysis-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.analysis-loading {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.analysis-loading-spinner {
+  margin: 0 auto 16px;
+}
+
+.analysis-loading-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+}
+
+.analysis-preformatted {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.analysis-prediction-text {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.analysis-prediction-confidence {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.analysis-source-item {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.analysis-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+/* ---------- Video Panel Extracted Styles ---------- */
+.video-search-wrapper {
+  padding: 12px;
+}
+
+.video-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.video-section-label {
+  padding: 8px 0;
+  font-size: 11px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+}
+
+.video-section-label-related {
+  padding: 12px 0 6px;
+  font-size: 11px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+}
+
+.video-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ---------- Radio Panel Extracted Styles ---------- */
+.radio-info {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.radio-name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.radio-location {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.radio-freq {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 4px;
+}
+
+.radio-users {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.radio-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.radio-open-btn {
+  margin-top: 16px;
+  max-width: 200px;
+}
+
 /* ---------- Squawk Alert Banner ---------- */
 .squawk-alert-banner {
   position: fixed;

@@ -57,7 +57,7 @@ _REGION_KEYWORDS = sorted(
 )
 
 
-def _geocode_maritime(text: str):
+def _geocode_maritime(text: str) -> tuple | None:
     """Geocode a maritime incident description."""
     text_lower = text.lower()
     for zone, (lat, lon) in sorted(_MARITIME_ZONES.items(), key=lambda x: -len(x[0])):

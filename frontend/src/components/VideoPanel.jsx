@@ -30,7 +30,7 @@ const VideoPanel = React.memo(function VideoPanel({ data, onClose }) {
 
       {/* YouTube search embed when no direct video found */}
       {!currentVideo && !data.loading && query && (
-        <div style={{ padding: '12px' }}>
+        <div className="video-search-wrapper">
           <a
             href={`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`}
             target="_blank"
@@ -44,7 +44,7 @@ const VideoPanel = React.memo(function VideoPanel({ data, onClose }) {
 
       {/* Loading state */}
       {data.loading && (
-        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+        <div className="video-loading">
           SEARCHING INTELLIGENCE...
         </div>
       )}
@@ -52,7 +52,7 @@ const VideoPanel = React.memo(function VideoPanel({ data, onClose }) {
       {/* Video List */}
       <div className="video-list">
         {videos.length > 0 && (
-          <div style={{ padding: '8px 0', fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)', letterSpacing: '1px' }}>
+          <div className="video-section-label">
             VIDEOS ({videos.length})
           </div>
         )}
@@ -73,7 +73,7 @@ const VideoPanel = React.memo(function VideoPanel({ data, onClose }) {
         {/* News articles — always show when available */}
         {articles.length > 0 && (
           <>
-            <div style={{ padding: '12px 0 6px', fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)', letterSpacing: '1px' }}>
+            <div className="video-section-label-related">
               RELATED INTEL ({articles.length})
             </div>
             {articles.map((a, i) => (
@@ -92,7 +92,7 @@ const VideoPanel = React.memo(function VideoPanel({ data, onClose }) {
         )}
 
         {!data.loading && videos.length === 0 && articles.length === 0 && (
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+          <div className="video-empty">
             No results found. Try clicking a different event.
           </div>
         )}

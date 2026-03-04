@@ -164,7 +164,7 @@ async def enrich_from_hexdb(
                 # Cache empty result to avoid re-fetching
                 _HEXDB_CACHE[hx] = {}
                 _HEXDB_CACHE_TIME[hx] = time.monotonic()
-        except Exception:
+        except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError):
             pass  # Silently skip on error
 
     await asyncio.gather(*[_lookup(hx) for hx in to_fetch], return_exceptions=True)

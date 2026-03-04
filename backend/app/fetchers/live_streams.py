@@ -36,7 +36,7 @@ def _country_from_tvg_id(tvg_id: str) -> str:
     return ""
 
 
-def _geocode_country(code: str):
+def _geocode_country(code: str) -> tuple | None:
     """Resolve ISO 2-letter country code to (lat, lon)."""
     if not code:
         return None

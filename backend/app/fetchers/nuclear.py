@@ -52,7 +52,7 @@ class NuclearFetcher(BaseFetcher):
         resp.raise_for_status()
         try:
             payload = resp.json()
-        except Exception:
+        except (ValueError, KeyError):
             return []
         stations = payload if isinstance(payload, list) else []
         if isinstance(payload, dict):
