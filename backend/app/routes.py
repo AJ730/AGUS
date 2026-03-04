@@ -468,6 +468,27 @@ async def natural_events(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# 4D Timeline — Historical data snapshots
+# ---------------------------------------------------------------------------
+
+@router.get("/history/{layer}")
+async def history(layer: str, request: Request, hours: float = 24.0):
+    """Return timestamped snapshots for a layer within a time window."""
+    cache = _cache(request)
+    if layer not in cache._slots:
+        return JSONResponse({"error": f"Unknown layer: {layer}"}, status_code=404)
+    snapshots = cache.get_history(layer, hours=hours)
+    return {"layer": layer, "hours": hours, "snapshots": snapshots}
+
+
+@router.get("/history_summary")
+async def history_summary(request: Request):
+    """Return available history time ranges per layer."""
+    cache = _cache(request)
+    return cache.history_summary()
+
+
+# ---------------------------------------------------------------------------
 # Correlation Analysis — Cross-reference all OSINT layers
 # ---------------------------------------------------------------------------
 

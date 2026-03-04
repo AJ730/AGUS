@@ -156,7 +156,7 @@ LAYER_CONFIG: dict[str, dict] = {
         "source_url": "Telegram OSINT channels via RSS bridges (Aurora Intel, BNO, etc.)",
     },
     "rocket_alerts": {
-        "ttl": 60,
+        "ttl": 300,
         "source_url": "https://www.oref.org.il/WarningMessages/alert/alerts.json (OREF) + GDELT",
     },
     "geo_confirmed": {

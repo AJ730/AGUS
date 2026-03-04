@@ -74,8 +74,8 @@ function generateVehicles(road) {
   for (let v = 0; v < numVehicles; v++) {
     // Random position along the road
     const progress = Math.random()
-    // Random speed variation (0.00001 to 0.00004 degrees/frame ~ 30-80 km/h)
-    const speed = 0.000015 + Math.random() * 0.000025
+    // Speed in degrees/second (~30-80 km/h at mid-latitudes)
+    const speed = 0.001 + Math.random() * 0.0015
     // Direction: 0 = forward along coords, 1 = reverse (opposite lane)
     const direction = v % 2 === 0 ? 1 : -1
 
@@ -130,16 +130,19 @@ export class StreetTrafficController {
     this._lastFetchLon = null
     this._animFrameId = null
     this._fetching = false
+    this._lastAnimTime = 0
+    this._animRunning = false
   }
 
   /**
-   * Called on each postRender — checks altitude and manages lifecycle.
+   * Called from postRender (~2Hz). Manages lifecycle and road fetching only.
+   * Animation runs independently via requestAnimationFrame.
    * @param {number} altKm - camera altitude in km
    * @param {number} lat - camera latitude in degrees
    * @param {number} lon - camera longitude in degrees
    */
   update(altKm, lat, lon) {
-    if (altKm < 5) {
+    if (altKm < 10) {
       if (!this._active) {
         this._activate()
       }
@@ -151,7 +154,6 @@ export class StreetTrafficController {
       )) {
         this._fetchAndPopulate(lat, lon, altKm)
       }
-      this._animate()
     } else if (this._active) {
       this._deactivate()
     }
@@ -162,14 +164,42 @@ export class StreetTrafficController {
     this._points = this._viewer.scene.primitives.add(
       new Cesium.PointPrimitiveCollection()
     )
+    this._startAnimLoop()
   }
 
   _deactivate() {
     this._active = false
+    this._stopAnimLoop()
     this._vehicles = []
     if (this._points) {
       this._viewer.scene.primitives.remove(this._points)
       this._points = null
+    }
+  }
+
+  /** Start an independent rAF loop for smooth vehicle animation. */
+  _startAnimLoop() {
+    if (this._animRunning) return
+    this._animRunning = true
+    this._lastAnimTime = performance.now()
+    const loop = (now) => {
+      if (!this._animRunning) return
+      const dtMs = now - this._lastAnimTime
+      this._lastAnimTime = now
+      // Cap delta to 100ms to prevent huge jumps when tab is backgrounded
+      const dtSec = Math.min(dtMs / 1000, 0.1)
+      this._animate(dtSec)
+      this._animFrameId = requestAnimationFrame(loop)
+    }
+    this._animFrameId = requestAnimationFrame(loop)
+  }
+
+  /** Stop the independent rAF animation loop. */
+  _stopAnimLoop() {
+    this._animRunning = false
+    if (this._animFrameId !== null) {
+      cancelAnimationFrame(this._animFrameId)
+      this._animFrameId = null
     }
   }
 
@@ -179,7 +209,7 @@ export class StreetTrafficController {
     this._lastFetchLon = lon
 
     // Viewport bounding box based on altitude
-    const span = Math.min(altKm * 0.015, 0.05) // smaller area when closer
+    const span = Math.min(altKm * 0.02, 0.1) // wider area for more roads
     const south = lat - span
     const north = lat + span
     const west = lon - span
@@ -203,12 +233,12 @@ export class StreetTrafficController {
         // Add point primitive
         if (this._points) {
           const point = this._points.add({
-            position: Cesium.Cartesian3.fromDegrees(pos[0], pos[1], 1),
-            pixelSize: v.direction > 0 ? 4 : 3,
+            position: Cesium.Cartesian3.fromDegrees(pos[0], pos[1], 2),
+            pixelSize: v.direction > 0 ? 6 : 5,
             color: v.direction > 0
               ? Cesium.Color.fromCssColorString('#fbbf24') // yellow headlight
               : Cesium.Color.fromCssColorString('#ef4444'), // red taillight
-            scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 5000, 0.3),
+            scaleByDistance: new Cesium.NearFarScalar(200, 2.0, 8000, 0.6),
           })
           v._point = point
         }
@@ -221,10 +251,15 @@ export class StreetTrafficController {
     this._viewer.scene.requestRender()
   }
 
-  _animate() {
+  /**
+   * Advance vehicle positions by real elapsed time.
+   * @param {number} dtSec - elapsed seconds since last frame
+   */
+  _animate(dtSec) {
+    if (this._vehicles.length === 0) return
+
     for (const v of this._vehicles) {
-      // Move vehicle along road
-      v.progress += v.speed * v.direction * 0.016 // ~60fps frame time
+      v.progress += v.speed * v.direction * dtSec
 
       // Wrap around
       if (v.progress > 1) v.progress -= 1
@@ -236,12 +271,11 @@ export class StreetTrafficController {
       }
     }
 
-    if (this._vehicles.length > 0) {
-      this._viewer.scene.requestRender()
-    }
+    this._viewer.scene.requestRender()
   }
 
   destroy() {
+    this._stopAnimLoop()
     this._deactivate()
   }
 }

@@ -351,10 +351,11 @@ class FlightIntelligence:
         is_mil = self.is_military(callsign, icao24)
         flight_route = self.estimate_route(callsign)
         aircraft_type = self.estimate_aircraft_type(icao24)
-        # Only flag squawk alerts for airborne aircraft with callsigns (reduces false positives)
+        # Only flag squawk alerts for airborne civilian aircraft with callsigns
+        # Military aircraft frequently use 7000-range codes for training/ops
         on_ground = s[8] if len(s) > 8 else False
         squawk_alert = None
-        if squawk and callsign and not on_ground:
+        if squawk and callsign and not on_ground and not is_mil:
             squawk_alert = self.detect_squawk_alert(squawk)
 
         return {

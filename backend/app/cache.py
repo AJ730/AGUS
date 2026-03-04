@@ -9,9 +9,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Coroutine, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict, List, Optional
 
 logger = logging.getLogger("agus.cache")
 
@@ -24,6 +25,25 @@ class CacheEntry:
     fetched_at_wall: float = 0.0     # wall clock / Unix epoch (for display)
     record_count: int = 0
     error: Optional[str] = None
+
+
+@dataclass
+class HistorySnapshot:
+    """A timestamped snapshot of layer data for timeline scrubbing."""
+    wall_ts: float           # Unix epoch timestamp
+    record_count: int
+    data: Any
+
+
+# Layers eligible for historical snapshots (OSINT / event layers, not real-time)
+HISTORY_LAYERS = frozenset({
+    "conflicts", "earthquakes", "missile_tests", "rocket_alerts",
+    "telegram_osint", "reddit_osint", "news", "events", "terrorism",
+    "fires", "weather_alerts", "geo_confirmed", "equipment_losses",
+    "internet_outages", "gps_jamming", "natural_events",
+})
+
+MAX_SNAPSHOTS_PER_LAYER = 48  # ~24h at 30min intervals
 
 
 @dataclass
@@ -55,6 +75,7 @@ class CacheManager:
 
     def __init__(self) -> None:
         self._slots: Dict[str, CacheSlot] = {}
+        self._history: Dict[str, deque] = {}
 
     def register(self, name: str, ttl: float, source_url: str) -> None:
         """Register a new cache slot."""
@@ -63,6 +84,8 @@ class CacheManager:
             ttl_seconds=ttl,
             source_url=source_url,
         )
+        if name in HISTORY_LAYERS:
+            self._history[name] = deque(maxlen=MAX_SNAPSHOTS_PER_LAYER)
 
     def slot(self, name: str) -> CacheSlot:
         """Return the named CacheSlot (for header inspection etc.)."""
@@ -97,25 +120,46 @@ class CacheManager:
                     len((data or {}).get("features", []))
                     if isinstance(data, dict) else 0
                 )
-                # If fetcher returned empty and we have no prior data,
-                # use a short TTL (30s) so we retry quickly instead of
-                # caching an empty result for the full TTL period.
                 now = time.monotonic()
-                if count == 0 and slot.entry.data in (None, [], {"type": "FeatureCollection", "features": []}):
+                prev_data = slot.entry.data
+                prev_count = slot.entry.record_count
+
+                # If fetcher returned empty but we have good prior data,
+                # keep the previous data and use a short TTL to retry.
+                if count == 0 and prev_data and prev_count > 0:
+                    backoff_ttl = 30.0
+                    fetched_at = now - slot.ttl_seconds + backoff_ttl
+                    logger.info("[%s] empty refetch, keeping %d prior records (retry in %.0fs)",
+                                name, prev_count, backoff_ttl)
+                    slot.entry.fetched_at = fetched_at
+                    slot.entry.error = None
+                elif count == 0 and prev_data in (None, [], {"type": "FeatureCollection", "features": []}):
+                    # No prior data either -- short backoff retry
                     backoff_ttl = 30.0
                     fetched_at = now - slot.ttl_seconds + backoff_ttl
                     logger.info("[%s] empty result, will retry in %.0fs", name, backoff_ttl)
+                    slot.entry = CacheEntry(
+                        data=data, fetched_at=fetched_at,
+                        fetched_at_wall=time.time(), record_count=count,
+                    )
                 else:
                     fetched_at = now
-
-                slot.entry = CacheEntry(
-                    data=data,
-                    fetched_at=fetched_at,
-                    fetched_at_wall=time.time(),
-                    record_count=count,
-                    error=None,
-                )
+                    slot.entry = CacheEntry(
+                        data=data, fetched_at=fetched_at,
+                        fetched_at_wall=time.time(), record_count=count,
+                    )
                 logger.info("[%s] refreshed -- %d records", name, count)
+
+                # Record history snapshot for timeline-eligible layers
+                if name in self._history and count > 0:
+                    ring = self._history[name]
+                    # Only store if record count changed from last snapshot
+                    if not ring or ring[-1].record_count != count:
+                        ring.append(HistorySnapshot(
+                            wall_ts=time.time(),
+                            record_count=count,
+                            data=data,
+                        ))
             except Exception as exc:
                 logger.error("[%s] fetch failed: %s", name, exc)
                 slot.entry.error = str(exc)
@@ -175,6 +219,39 @@ class CacheManager:
             }
             for name, slot in self._slots.items()
         }
+
+    def get_history(self, name: str, hours: float = 24.0) -> List[Dict[str, Any]]:
+        """Return timestamped snapshots for a layer within a time window."""
+        ring = self._history.get(name)
+        if not ring:
+            return []
+        cutoff = time.time() - hours * 3600
+        result = []
+        for snap in ring:
+            if snap.wall_ts >= cutoff:
+                result.append({
+                    "ts": snap.wall_ts,
+                    "iso": datetime.fromtimestamp(snap.wall_ts, tz=timezone.utc).isoformat(),
+                    "record_count": snap.record_count,
+                    "data": snap.data,
+                })
+        return result
+
+    def history_summary(self) -> Dict[str, Any]:
+        """Return available time ranges per history-eligible layer."""
+        summary: Dict[str, Any] = {}
+        for name, ring in self._history.items():
+            if not ring:
+                summary[name] = {"snapshots": 0}
+                continue
+            summary[name] = {
+                "snapshots": len(ring),
+                "oldest": datetime.fromtimestamp(ring[0].wall_ts, tz=timezone.utc).isoformat(),
+                "newest": datetime.fromtimestamp(ring[-1].wall_ts, tz=timezone.utc).isoformat(),
+                "oldest_ts": ring[0].wall_ts,
+                "newest_ts": ring[-1].wall_ts,
+            }
+        return summary
 
     def sources_list(self) -> list:
         """Return detailed list suitable for /api/sources."""

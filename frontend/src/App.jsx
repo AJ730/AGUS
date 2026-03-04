@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import * as Cesium from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 
@@ -13,10 +13,12 @@ import { StreetTrafficController } from './utils/streetTraffic'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import FlightPanel from './components/FlightPanel'
+import StreetViewPanel from './components/StreetViewPanel'
 import VideoPanel from './components/VideoPanel'
 import AnalysisPanel from './components/AnalysisPanel'
 import RadioPanel from './components/RadioPanel'
 import BottomBar from './components/BottomBar'
+import TimelineBar from './components/TimelineBar'
 import AnalyticsCards from './components/AnalyticsCards'
 import NewsTicker from './components/NewsTicker'
 
@@ -58,6 +60,11 @@ export default function App() {
   const [analysisPanel, setAnalysisPanel] = useState(null)
   const [radioPanel, setRadioPanel] = useState(null)
   const [dismissedSquawk, setDismissedSquawk] = useState(false)
+  const [rocketAlertCount, setRocketAlertCount] = useState(0)
+  const [rocketAlertItems, setRocketAlertItems] = useState([])
+  const [dismissedRocket, setDismissedRocket] = useState(false)
+  const prevSquawkRef = useRef({})  // { 'callsign+squawk': seenCount }
+  const audioCtxRef = useRef(null)
   const [visualFilter, setVisualFilter] = useState('crt')   // 'crt' | 'nvg' | 'flir' | 'none'
   const [gibsActive, setGibsActive] = useState({})          // { viirs_thermal: true, ... }
   const gibsLayerRefs = useRef({})                           // { viirs_thermal: ImageryLayer, ... }
@@ -66,6 +73,75 @@ export default function App() {
   const trafficTilesRef = useRef(null)                       // Google traffic tile layer
   const [trafficOverlay, setTrafficOverlay] = useState(false) // Google traffic tiles toggle
   const imageryLayersRef = useRef({ esri: null, labels: null, darkStreets: null, nightlightsOverlay: null })
+  const [timelineTs, setTimelineTs] = useState(null)         // null = LIVE, number = Unix timestamp
+  const historyCacheRef = useRef({})                         // { layerKey: { snapshots: [...] } }
+  const [cctvOverlay, setCctvOverlay] = useState(null)      // { streamUrl, name, screenX, screenY }
+  const cctvPositionRef = useRef(null)                       // Cartesian3 world position for tracking
+  const cctvOverlayRef = useRef(null)                        // DOM ref for direct position updates
+  const [streetViewPanel, setStreetViewPanel] = useState(null) // { lat, lon, heading, name }
+  const mapStyleRef = useRef('hybrid')                       // mirrors mapStyle for use in click handler
+
+  // Alert sound generator (Web Audio API — no external files needed)
+  const playAlertSound = useCallback((type = 'rocket') => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      const ctx = audioCtxRef.current
+      if (ctx.state === 'suspended') ctx.resume()
+      const now = ctx.currentTime
+
+      if (type === 'rocket') {
+        // Loud air-raid siren: rising/falling tone, 5 cycles
+        for (let i = 0; i < 5; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sawtooth'
+          // Rising tone 440→880 then falling 880→440
+          osc.frequency.setValueAtTime(440, now + i * 0.6)
+          osc.frequency.linearRampToValueAtTime(880, now + i * 0.6 + 0.3)
+          osc.frequency.linearRampToValueAtTime(440, now + i * 0.6 + 0.6)
+          gain.gain.setValueAtTime(0.25, now + i * 0.6)
+          gain.gain.setValueAtTime(0.25, now + i * 0.6 + 0.55)
+          gain.gain.linearRampToValueAtTime(0, now + i * 0.6 + 0.6)
+          osc.connect(gain).connect(ctx.destination)
+          osc.start(now + i * 0.6)
+          osc.stop(now + i * 0.6 + 0.6)
+        }
+      } else {
+        // Squawk: short urgent beeps
+        for (let i = 0; i < 4; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.value = 1200
+          gain.gain.setValueAtTime(0.12, now + i * 0.2)
+          gain.gain.setValueAtTime(0, now + i * 0.2 + 0.1)
+          osc.connect(gain).connect(ctx.destination)
+          osc.start(now + i * 0.2)
+          osc.stop(now + i * 0.2 + 0.15)
+        }
+      }
+    } catch (e) { /* audio not available */ }
+  }, [])
+
+  // Voice announcement for missile/rocket alerts (Web Speech API)
+  const announceAlert = useCallback((locations) => {
+    try {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const locationText = locations.filter(Boolean).slice(0, 3).join(', ')
+      const msg = new SpeechSynthesisUtterance(
+        `Warning. Incoming missile alert. ${locationText ? 'Locations: ' + locationText : 'Check display for details.'}`
+      )
+      msg.rate = 1.1
+      msg.pitch = 0.8
+      msg.volume = 1.0
+      // Prefer an English voice
+      const voices = window.speechSynthesis.getVoices()
+      const enVoice = voices.find(v => v.lang.startsWith('en'))
+      if (enVoice) msg.voice = enVoice
+      window.speechSynthesis.speak(msg)
+    } catch (e) { /* speech not available */ }
+  }, [])
 
   // Initialize CesiumJS
   useEffect(() => {
@@ -209,6 +285,19 @@ export default function App() {
       // Procedural street traffic (animated vehicles on roads)
       trafficCtrl.update(altKm, camLat, camLon)
 
+      // Update CCTV overlay screen position (direct DOM, no React re-render)
+      if (cctvPositionRef.current && cctvOverlayRef.current) {
+        const sp = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, cctvPositionRef.current)
+        if (sp) {
+          cctvOverlayRef.current.style.left = sp.x + 'px'
+          cctvOverlayRef.current.style.top = sp.y + 'px'
+          cctvOverlayRef.current.style.display = 'block'
+        } else {
+          // Entity behind the globe
+          cctvOverlayRef.current.style.display = 'none'
+        }
+      }
+
       // Altitude-based crossfade: only in hybrid mode (dark/darksat keep full alpha)
       const layers = imageryLayersRef.current
       if (layers.darkStreets && layers.esri && layers.esri.show) {
@@ -275,7 +364,7 @@ export default function App() {
       }
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
 
-    // CLICK -- flight detail, video panel, radio panel, or stream open
+    // CLICK -- flight detail, video panel, radio panel, stream open, or street view
     handler.setInputAction((click) => {
       const picked = scene.pick(click.position)
       if (picked && picked.id) {
@@ -287,7 +376,22 @@ export default function App() {
           searchVideos(picked.id._videoData.query)
         } else if (picked.id._cctvData) {
           const cctv = picked.id._cctvData
-          if (cctv.stream_url) {
+          if (cctv.stream_url && mapStyleRef.current === '3d') {
+            // In 3D mode: show floating overlay at entity's screen position
+            const worldPos = isFinite(cctv.lat) && isFinite(cctv.lon)
+              ? Cesium.Cartesian3.fromDegrees(cctv.lon, cctv.lat, 50)
+              : null
+            cctvPositionRef.current = worldPos
+            const screenPos = worldPos
+              ? Cesium.SceneTransforms.worldToWindowCoordinates(scene, worldPos)
+              : null
+            setCctvOverlay({
+              streamUrl: cctv.stream_url,
+              name: cctv.name || cctv.location || 'CCTV',
+              screenX: screenPos ? screenPos.x : click.position.x,
+              screenY: screenPos ? screenPos.y : click.position.y,
+            })
+          } else if (cctv.stream_url) {
             window.open(cctv.stream_url, '_blank', 'width=800,height=600')
           } else if (isFinite(cctv.lat) && isFinite(cctv.lon)) {
             viewerRef.current.camera.flyTo({
@@ -299,6 +403,21 @@ export default function App() {
         }
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+
+    // RIGHT-CLICK -- open Street View at ground position (below 50km altitude)
+    handler.setInputAction((click) => {
+      const cart = viewer.camera.positionCartographic
+      if (!cart || cart.height / 1000 > 50) return
+      const ray = viewer.camera.getPickRay(click.position)
+      if (!ray) return
+      const cartesian = scene.globe.pick(ray, scene)
+      if (!cartesian) return
+      const carto = Cesium.Cartographic.fromCartesian(cartesian)
+      const lat = Cesium.Math.toDegrees(carto.latitude)
+      const lon = Cesium.Math.toDegrees(carto.longitude)
+      const camHeading = Cesium.Math.toDegrees(viewer.camera.heading)
+      setStreetViewPanel({ lat, lon, heading: Math.round(camHeading), name: '' })
+    }, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
 
     // Poll backend health until it's ready, then hide loading screen
     let loadingDismissed = false
@@ -406,9 +525,9 @@ export default function App() {
       setAnalytics(prev => ({ ...prev, [layerKey]: count }))
     }
 
-    // Scan flights for emergency squawk alerts
+    // Scan flights for emergency squawk alerts (require persistence across 2 refreshes)
     if (layerKey === 'flights') {
-      const emergencies = items
+      const rawEmergencies = items
         .map(it => it.properties || it)
         .filter(p => p.squawk_alert && ['HIJACK', 'RADIO_FAILURE', 'EMERGENCY'].includes(p.squawk_alert))
         .map(p => ({
@@ -416,12 +535,49 @@ export default function App() {
           squawk: p.squawk || '????',
           alert: p.squawk_alert,
         }))
-      // Reset dismiss if new/different alerts appear
+
+      // Track which squawk alerts persist across consecutive refreshes
+      const newSeen = {}
+      for (const em of rawEmergencies) {
+        const key = em.callsign + em.squawk
+        newSeen[key] = (prevSquawkRef.current[key] || 0) + 1
+      }
+      prevSquawkRef.current = newSeen
+
+      // Only show alerts that have persisted for 2+ consecutive refreshes
+      const confirmed = rawEmergencies.filter(em => newSeen[em.callsign + em.squawk] >= 2)
+
       setSquawkAlerts(prev => {
         const prevKey = prev.map(a => a.callsign + a.squawk).sort().join(',')
-        const newKey = emergencies.map(a => a.callsign + a.squawk).sort().join(',')
-        if (newKey !== prevKey) setDismissedSquawk(false)
-        return emergencies
+        const newKey = confirmed.map(a => a.callsign + a.squawk).sort().join(',')
+        if (newKey !== prevKey && confirmed.length > 0) {
+          setDismissedSquawk(false)
+          playAlertSound('squawk')
+        }
+        return confirmed
+      })
+    }
+
+    // Play alert sound + voice announcement when new rocket alerts arrive
+    if (layerKey === 'rocket_alerts' && count > 0) {
+      const alertItems = items.slice(0, 5).map(it => {
+        const p = it.properties || it
+        return {
+          title: String(p.title || p.name || 'Alert').substring(0, 80),
+          location: p.location || p.city || '',
+          threat: p.threat || p.alert_type || '',
+        }
+      })
+      setRocketAlertItems(alertItems)
+      setRocketAlertCount(prev => {
+        if (count !== prev) {
+          playAlertSound('rocket')
+          setDismissedRocket(false)
+          // Voice announce locations
+          const locations = alertItems.map(a => a.location).filter(Boolean)
+          announceAlert(locations)
+        }
+        return count
       })
     }
 
@@ -456,6 +612,10 @@ export default function App() {
 
   // Map style switching (satellite, hybrid, dark, darksat, 3d)
   useEffect(() => {
+    mapStyleRef.current = mapStyle
+    // Auto-close CCTV overlay when leaving 3D mode
+    if (mapStyle !== '3d' && cctvOverlay) setCctvOverlay(null)
+
     const viewer = viewerRef.current
     if (!viewer) return
     const layers = imageryLayersRef.current
@@ -595,13 +755,21 @@ export default function App() {
     viewer.scene.requestRender()
   }, [trafficOverlay])
 
+  // Real-time layers that always auto-refresh regardless of timeline mode
+  const REALTIME_LAYERS = useMemo(() => new Set([
+    'flights', 'vessels', 'carriers', 'satellites',
+  ]), [])
+
   // Load visible layers and set up refresh intervals
   useEffect(() => {
     for (const [key, state] of Object.entries(layerState)) {
       const ds = dataSourcesRef.current[key]
       if (ds) ds.show = state.visible
 
-      if (state.visible) {
+      // In timeline mode, only auto-refresh real-time layers
+      const shouldAutoRefresh = state.visible && (timelineTs === null || REALTIME_LAYERS.has(key))
+
+      if (shouldAutoRefresh) {
         if (!intervalsRef.current[key]) {
           const ms = LAYERS[key].refreshMs
           intervalsRef.current[key] = setInterval(() => loadLayer(key), ms)
@@ -614,7 +782,7 @@ export default function App() {
         }
       }
     }
-  }, [layerState, loadLayer])
+  }, [layerState, loadLayer, timelineTs, REALTIME_LAYERS])
 
   // Toggle layer visibility
   const toggleLayer = useCallback((key) => {
@@ -635,6 +803,65 @@ export default function App() {
   const closeVideoPanel = useCallback(() => setVideoPanel(null), [])
   const closeAnalysisPanel = useCallback(() => setAnalysisPanel(null), [])
   const closeRadioPanel = useCallback(() => setRadioPanel(null), [])
+  const closeStreetView = useCallback(() => setStreetViewPanel(null), [])
+  const closeCctvOverlay = useCallback(() => {
+    setCctvOverlay(null)
+    cctvPositionRef.current = null
+  }, [])
+
+  // Timeline layers eligible for historical scrubbing
+  const TIMELINE_LAYERS = useMemo(() => new Set([
+    'conflicts', 'earthquakes', 'missile_tests', 'rocket_alerts',
+    'telegram_osint', 'reddit_osint', 'news', 'events', 'terrorism',
+    'fires', 'weather_alerts', 'geo_confirmed', 'equipment_losses',
+    'internet_outages', 'gps_jamming', 'natural_events',
+  ]), [])
+
+  // Handle timeline scrubbing -- fetch history and render closest snapshot
+  const handleTimeChange = useCallback(async (ts) => {
+    setTimelineTs(ts)
+    if (ts === null) {
+      // Return to live: reload all visible layers from current data
+      for (const key of Object.keys(layerState)) {
+        if (layerState[key].visible) loadLayer(key)
+      }
+      return
+    }
+    // For each visible timeline-eligible layer, fetch history and find closest snapshot
+    for (const key of Object.keys(layerState)) {
+      if (!layerState[key].visible || !TIMELINE_LAYERS.has(key)) continue
+      const ds = dataSourcesRef.current[key]
+      if (!ds) continue
+
+      // Fetch history if not cached or stale
+      let hist = historyCacheRef.current[key]
+      if (!hist || (Date.now() - (hist._fetchedAt || 0)) > 60000) {
+        try {
+          const resp = await fetch(`${API_BASE}/history/${key}?hours=24`)
+          if (resp.ok) {
+            hist = await resp.json()
+            hist._fetchedAt = Date.now()
+            historyCacheRef.current[key] = hist
+          }
+        } catch { continue }
+      }
+      if (!hist || !hist.snapshots || hist.snapshots.length === 0) continue
+
+      // Find closest snapshot <= selected time
+      let best = null
+      for (const snap of hist.snapshots) {
+        if (snap.ts <= ts) best = snap
+      }
+      if (!best) best = hist.snapshots[0]
+
+      // Render the historical data
+      const items = Array.isArray(best.data) ? best.data
+        : (best.data?.features || [])
+      const cfg = LAYERS[key]
+      buildEntities(ds, key, items, cfg)
+      if (viewerRef.current) viewerRef.current.scene.requestRender()
+    }
+  }, [layerState, loadLayer, TIMELINE_LAYERS])
   const flyToLocation = useCallback((lon, lat) => {
     viewerRef.current?.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500000),
@@ -788,6 +1015,20 @@ export default function App() {
         </div>
       )}
 
+      {/* Rocket Alert Banner */}
+      {rocketAlertItems.length > 0 && !dismissedRocket && (
+        <div className="rocket-alert-banner">
+          <span className="rocket-alert-icon">ALERT</span>
+          <span className="rocket-alert-count">{rocketAlertCount} ACTIVE</span>
+          {rocketAlertItems.map((a, i) => (
+            <span key={i} className="rocket-alert-item">
+              {a.location ? `${a.location}` : a.title}{a.threat ? ` — ${a.threat}` : ''}
+            </span>
+          ))}
+          <button className="squawk-dismiss" onClick={() => setDismissedRocket(true)} title="Dismiss">&times;</button>
+        </div>
+      )}
+
       <div className={'app-container' + (sidebarOpen ? '' : ' sidebar-collapsed')}>
         <TopBar
           onMenuToggle={toggleSidebar}
@@ -841,7 +1082,43 @@ export default function App() {
           onClose={closeRadioPanel}
         />
 
+        <StreetViewPanel
+          data={streetViewPanel}
+          onClose={closeStreetView}
+        />
+
+        {/* CCTV Stream Overlay (3D mode only) */}
+        {cctvOverlay && (
+          <div
+            className="cctv-overlay"
+            ref={cctvOverlayRef}
+            style={{ left: cctvOverlay.screenX, top: cctvOverlay.screenY }}
+          >
+            <div className="cctv-overlay-header">
+              <span className="cctv-overlay-title">{cctvOverlay.name}</span>
+              <button className="cctv-overlay-close" onClick={closeCctvOverlay}>&times;</button>
+            </div>
+            <iframe
+              className="cctv-overlay-iframe"
+              src={cctvOverlay.streamUrl}
+              title={cctvOverlay.name}
+              allow="autoplay; encrypted-media"
+              sandbox="allow-scripts allow-same-origin"
+            />
+            <a
+              className="cctv-overlay-fallback"
+              href={cctvOverlay.streamUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open stream in new tab
+            </a>
+          </div>
+        )}
+
         <AnalyticsCards analytics={analytics} />
+
+        {/* TimelineBar hidden until history snapshots accumulate */}
 
         <NewsTicker items={newsItems} />
 
