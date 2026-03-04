@@ -14,6 +14,7 @@ import httpx
 
 from ..utils import COUNTRY_COORDS
 from .base import BaseFetcher
+from .conflict_zones import CONFLICT_ZONES as _CONFLICT_ZONES
 
 logger = logging.getLogger("agus.fetchers")
 
@@ -35,23 +36,6 @@ _KEYWORDS = re.compile(
     r"sanction|weapon|artillery|tank|helicopter|fighter|submarine)",
 )
 
-# Conflict zones for geocoding (same pattern as Reddit/Telegram fetchers)
-_CONFLICT_ZONES = {
-    "ukraine": (48.38, 35.0), "kyiv": (50.45, 30.52), "kharkiv": (49.99, 36.23),
-    "kherson": (46.63, 32.62), "donetsk": (48.00, 37.80), "bakhmut": (48.60, 38.00),
-    "zaporizhzhia": (47.84, 35.14), "crimea": (44.95, 34.10), "odesa": (46.48, 30.73),
-    "gaza": (31.42, 34.35), "rafah": (31.30, 34.25), "khan younis": (31.35, 34.30),
-    "israel": (31.77, 35.22), "tel aviv": (32.09, 34.77), "jerusalem": (31.77, 35.23),
-    "iran": (32.43, 53.69), "tehran": (35.69, 51.39), "isfahan": (32.65, 51.68),
-    "taiwan": (23.70, 120.96), "syria": (34.80, 38.99), "damascus": (33.51, 36.29),
-    "yemen": (15.55, 48.52), "houthi": (15.35, 44.21), "red sea": (20.0, 38.0),
-    "russia": (55.75, 37.62), "moscow": (55.75, 37.62), "belgorod": (50.60, 36.60),
-    "china": (35.86, 104.20), "beijing": (39.91, 116.40), "north korea": (39.02, 125.75),
-    "pyongyang": (39.02, 125.75), "sudan": (12.86, 30.22), "khartoum": (15.50, 32.56),
-    "myanmar": (19.76, 96.07), "niger": (13.51, 2.11), "mali": (12.64, -8.00),
-    "somalia": (5.15, 46.20), "mogadishu": (2.05, 45.32), "lebanon": (33.85, 35.86),
-    "beirut": (33.89, 35.50), "hezbollah": (33.85, 35.86),
-}
 
 
 class MastodonOSINTFetcher(BaseFetcher):

@@ -78,18 +78,16 @@ _OVERPASS_URLS = [
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 
-# Module-level state: accumulated cameras + rotation index
-_accumulated: List[dict] = []
-_batch_index: int = 0
-
-
-
 _TFL_URL = "https://api.tfl.gov.uk/Place/Type/JamCam"
 _WINDY_URL = "https://api.windy.com/webcams/api/v3/webcams"
 
 
 class CCTVFetcher(BaseFetcher):
     """Fetches surveillance cameras from Overpass + TfL JamCams + optional Windy."""
+
+    def __init__(self) -> None:
+        self._accumulated: List[dict] = []
+        self._batch_index: int = 0
 
     @staticmethod
     def _build_query(cities: list) -> str:
@@ -226,8 +224,6 @@ class CCTVFetcher(BaseFetcher):
 
     async def fetch(self, client: httpx.AsyncClient) -> List[dict]:
         """Fetch cameras from Overpass + TfL + Windy, merge all."""
-        global _accumulated, _batch_index
-
         # Split all cities into batches of 4
         all_batches = [
             _CITIES[i:i + _BATCH_SIZE]
@@ -235,26 +231,26 @@ class CCTVFetcher(BaseFetcher):
         ]
 
         # Fetch ONE Overpass batch this cycle (fast — no sleeps, ~3-5 seconds)
-        batch = all_batches[_batch_index % len(all_batches)]
+        batch = all_batches[self._batch_index % len(all_batches)]
         new_cameras = await self._fetch_batch(batch)
 
         # Also fetch TfL + Windy on first cycle (they're fast)
-        if _batch_index == 0 or _batch_index % len(all_batches) == 0:
+        if self._batch_index == 0 or self._batch_index % len(all_batches) == 0:
             tfl_cams = await self._fetch_tfl(client)
             new_cameras.extend(tfl_cams)
             windy_cams = await self._fetch_windy(client)
             new_cameras.extend(windy_cams)
 
         # Deduplicate by (lat, lon) and merge into accumulated set
-        existing = {(c["latitude"], c["longitude"]) for c in _accumulated}
+        existing = {(c["latitude"], c["longitude"]) for c in self._accumulated}
         for cam in new_cameras:
             key = (cam["latitude"], cam["longitude"])
             if key not in existing:
-                _accumulated.append(cam)
+                self._accumulated.append(cam)
                 existing.add(key)
 
-        _batch_index += 1
+        self._batch_index += 1
 
         logger.info("CCTV total: %d cameras (batch %d/%d)",
-                     len(_accumulated), _batch_index, len(all_batches))
-        return list(_accumulated)
+                     len(self._accumulated), self._batch_index, len(all_batches))
+        return list(self._accumulated)

@@ -31,36 +31,33 @@ _QUERIES = {
     "oil_refinery": '[out:json][timeout:45];(node["man_made"="petroleum_well"];node["industrial"="refinery"];);out body 200;',
 }
 
-# Module-level accumulated results + rotation index
-_accumulated: List[dict] = []
-_query_index: int = 0
-
-
 class CriticalInfrastructureFetcher(BaseFetcher):
     """Fetches critical infrastructure from OpenStreetMap via Overpass."""
 
+    def __init__(self) -> None:
+        self._accumulated: List[dict] = []
+        self._query_index: int = 0
+
     async def fetch(self, client: httpx.AsyncClient) -> List[dict]:
         """Fetch one infrastructure type per cycle, accumulate over time."""
-        global _accumulated, _query_index
-
         query_keys = list(_QUERIES.keys())
-        key = query_keys[_query_index % len(query_keys)]
+        key = query_keys[self._query_index % len(query_keys)]
         query = _QUERIES[key]
 
         new_items = await self._fetch_overpass(key, query)
 
         # Deduplicate by (lat, lon) and merge
-        existing = {(r["latitude"], r["longitude"]) for r in _accumulated}
+        existing = {(r["latitude"], r["longitude"]) for r in self._accumulated}
         for item in new_items:
             coord_key = (item["latitude"], item["longitude"])
             if coord_key not in existing:
-                _accumulated.append(item)
+                self._accumulated.append(item)
                 existing.add(coord_key)
 
-        _query_index += 1
+        self._query_index += 1
         logger.info("Infrastructure total: %d items (fetched %s: %d new)",
-                     len(_accumulated), key, len(new_items))
-        return list(_accumulated)
+                     len(self._accumulated), key, len(new_items))
+        return list(self._accumulated)
 
     async def _fetch_overpass(self, infra_type: str, query: str) -> List[dict]:
         """Fetch from Overpass with mirror failover."""

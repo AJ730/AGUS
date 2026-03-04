@@ -11,6 +11,7 @@ import httpx
 
 from ..utils import COUNTRY_COORDS
 from .base import BaseFetcher
+from .conflict_zones import CONFLICT_ZONES as _CONFLICT_ZONES
 
 logger = logging.getLogger("agus.fetchers")
 
@@ -76,80 +77,6 @@ _OSINT_RSS_FEEDS = [
     ("https://gcaptain.com/feed/", "gCaptain", "maritime"),
     ("https://splash247.com/feed/", "Splash 247", "maritime"),
 ]
-
-# Conflict zone keywords with approximate coordinates
-_CONFLICT_ZONES = {
-    "kherson": (46.6, 32.6), "zaporizhzhia": (47.8, 35.2),
-    "donetsk": (48.0, 37.8), "luhansk": (48.6, 39.3),
-    "bakhmut": (48.6, 38.0), "avdiivka": (48.1, 37.7),
-    "kursk": (51.7, 36.2), "belgorod": (50.6, 36.6),
-    "crimea": (45.0, 34.0), "sevastopol": (44.6, 33.5),
-    "odesa": (46.5, 30.7), "kyiv": (50.4, 30.5),
-    "kharkiv": (50.0, 36.2), "mariupol": (47.1, 37.5),
-    "dnipro": (48.5, 35.0), "sumy": (50.9, 34.8),
-    "mykolaiv": (46.97, 32.0), "pokrovsk": (48.3, 37.2),
-    "gaza": (31.5, 34.47), "rafah": (31.3, 34.25),
-    "khan younis": (31.35, 34.3), "jabalia": (31.54, 34.48),
-    "nablus": (32.22, 35.25), "jenin": (32.46, 35.3),
-    "tel aviv": (32.1, 34.8), "haifa": (32.8, 35.0),
-    "beirut": (33.9, 35.5), "southern lebanon": (33.3, 35.4),
-    "tyre": (33.27, 35.2), "baalbek": (34.0, 36.2),
-    "homs": (34.7, 36.7), "aleppo": (36.2, 37.2),
-    "idlib": (35.9, 36.6), "damascus": (33.5, 36.3),
-    "khartoum": (15.6, 32.5), "darfur": (13.0, 25.0),
-    "mogadishu": (2.0, 45.3), "taipei": (25.0, 121.5),
-    "taiwan": (23.5, 121.0), "south china sea": (14.0, 115.0),
-    "red sea": (19.0, 38.5), "houthi": (15.5, 43.5),
-    "iran": (32.4, 53.7), "tehran": (35.7, 51.4),
-    "isfahan": (32.65, 51.68), "strait of hormuz": (26.3, 56.8),
-    "irgc": (35.7, 51.4), "natanz": (33.72, 51.73),
-    "parchin": (35.24, 51.42), "semnan": (35.23, 53.92),
-    "bandar abbas": (27.18, 56.28), "bushehr": (28.97, 50.84),
-    "kharg island": (29.24, 50.33), "chabahar": (25.29, 60.64),
-    "tabriz": (38.08, 46.30), "mashhad": (36.27, 59.61),
-    "qom": (34.64, 50.88), "shiraz": (29.62, 52.53),
-    "fordow": (34.88, 51.26), "arak": (34.09, 49.69),
-    "yemen": (15.5, 48.5), "aden": (12.8, 45.0),
-    "sanaa": (15.35, 44.2), "hodeidah": (14.8, 42.95),
-    "kabul": (34.5, 69.2), "kandahar": (31.6, 65.7),
-    "tigray": (13.5, 39.5), "ethiopia": (9.0, 38.7),
-    "sudan": (15.6, 32.5), "chad": (12.1, 15.0),
-    "sahel": (15.0, 2.0), "mali": (12.6, -8.0),
-    "niger": (13.5, 2.1), "burkina faso": (12.4, -1.5),
-    "myanmar": (19.75, 96.1), "mandalay": (21.97, 96.1),
-    "yangon": (16.87, 96.2), "nagorno-karabakh": (39.8, 46.75),
-    "congo": (-4.32, 15.32), "goma": (-1.68, 29.23),
-    "north korea": (39.0, 125.75), "pyongyang": (39.0, 125.75),
-    "west bank": (32.0, 35.2), "east jerusalem": (31.78, 35.23),
-    "persian gulf": (26.0, 52.0), "arabian sea": (16.0, 63.0),
-    "mediterranean": (35.5, 18.0), "black sea": (43.0, 33.0),
-    "baltic sea": (56.5, 18.0), "arctic": (75.0, 30.0),
-    # General conflict / military keywords
-    "hezbollah": (33.9, 35.5), "hamas": (31.5, 34.47),
-    "idf": (31.8, 34.8), "iron dome": (31.8, 34.8),
-    "nato": (50.8, 4.4), "pentagon": (38.87, -77.06),
-    "kremlin": (55.75, 37.62), "moscow": (55.75, 37.62),
-    "beijing": (39.9, 116.4), "pyongyang": (39.0, 125.75),
-    "houthi": (15.5, 43.5), "wagner": (15.6, 32.5),
-    # Additional Iran military targets
-    "iran nuclear": (32.65, 51.68), "iranian missile": (35.24, 51.42),
-    "quds force": (35.7, 51.4), "khamenei": (35.7, 51.4),
-    "esfahan": (32.65, 51.68), "hormuz": (26.3, 56.8),
-    # Additional Ukraine targets
-    "tokmak": (47.25, 35.7), "vuhledar": (47.78, 37.25),
-    "chasiv yar": (48.6, 37.85), "kupiansk": (49.71, 37.61),
-    "zaporizhzhia nuclear": (47.5, 34.6),
-    # Additional Asia-Pacific
-    "taiwan strait": (24.0, 119.5), "spratly": (10.0, 114.0),
-    "paracel": (16.5, 112.0), "senkaku": (25.75, 123.47),
-    # Additional Africa
-    "mozambique": (-15.0, 40.7), "cabo delgado": (-12.5, 40.5),
-    "al-shabaab": (2.0, 45.3), "boko haram": (11.85, 13.16),
-    "lake chad": (13.0, 14.5), "cabo ligado": (-12.5, 40.5),
-    # Latin America
-    "cartel": (20.0, -102.0), "colombia": (4.6, -74.1),
-    "venezuela": (10.5, -66.9),
-}
 
 # Build sorted country list for title geocoding (longest first)
 _REGION_KEYWORDS = sorted(
