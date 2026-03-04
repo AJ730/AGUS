@@ -31,6 +31,7 @@ WINDY_API_KEY: str = os.getenv("WINDY_API_KEY", "")
 OPENAIP_API_KEY: str = os.getenv("OPENAIP_API_KEY", "")
 OTX_API_KEY: str = os.getenv("OTX_API_KEY", "")
 UCDP_API_KEY: str = os.getenv("UCDP_API_KEY", "")
+N2YO_API_KEY: str = os.getenv("N2YO_API_KEY", "")
 
 # Azure OpenAI (for LLM intelligence analysis)
 AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
@@ -190,5 +191,61 @@ LAYER_CONFIG: dict[str, dict] = {
     "natural_events": {
         "ttl": 1800,
         "source_url": "https://eonet.gsfc.nasa.gov/api/v3/events",
+    },
+    "space_weather": {
+        "ttl": 300,
+        "source_url": "https://services.swpc.noaa.gov/json/ (Kp, flares, storms)",
+    },
+    "air_quality": {
+        "ttl": 1800,
+        "source_url": "https://air-quality-api.open-meteo.com/v1/air-quality",
+    },
+    "cyclones": {
+        "ttl": 600,
+        "source_url": "https://www.nhc.noaa.gov/CurrentSurges.json + GDELT",
+    },
+    "volcanoes": {
+        "ttl": 1800,
+        "source_url": "https://volcanoes.usgs.gov/hans-public/ + Smithsonian GVP",
+    },
+    "asteroids": {
+        "ttl": 86400,
+        "source_url": "https://ssd-api.jpl.nasa.gov/cad.api",
+    },
+    "radiosondes": {
+        "ttl": 120,
+        "source_url": "https://api.v2.sondehub.org/sondes",
+    },
+    "disease_outbreaks": {
+        "ttl": 3600,
+        "source_url": "https://www.who.int/api/news/diseaseoutbreaknews + disease.sh",
+    },
+    "border_crossings": {
+        "ttl": 600,
+        "source_url": "https://bwt.cbp.gov/api/bwtall",
+    },
+    "mastodon_osint": {
+        "ttl": 600,
+        "source_url": "mastodon.social + infosec.exchange public trending APIs",
+    },
+    "space_launches": {
+        "ttl": 300,
+        "source_url": "https://ll.thespacedevs.com/2.2.0/launch/ (Launch Library 2)",
+    },
+    "protests": {
+        "ttl": 600,
+        "source_url": "https://api.acleddata.com/acled/read (protests) + GDELT",
+    },
+    "critical_infrastructure": {
+        "ttl": 3600,
+        "source_url": "https://overpass-api.de/api/interpreter (power plants, dams, refineries)",
+    },
+    "deforestation": {
+        "ttl": 1800,
+        "source_url": "https://data-api.globalforestwatch.org/ + GDELT",
+    },
+    "n2yo_satellites": {
+        "ttl": 60,
+        "source_url": "https://api.n2yo.com/rest/v1/satellite/ (live positions)",
     },
 }

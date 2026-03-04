@@ -1,4 +1,4 @@
-"""CCTV/webcam camera fetcher (Overpass batched city queries + static fallback)."""
+"""CCTV/webcam camera fetcher (Overpass + TfL JamCams + optional Windy)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import List, Tuple
 
 import httpx
 
+from ..config import WINDY_API_KEY
 from .base import BaseFetcher
 
 logger = logging.getLogger("agus.fetchers")
@@ -83,8 +84,12 @@ _batch_index: int = 0
 
 
 
+_TFL_URL = "https://api.tfl.gov.uk/Place/Type/JamCam"
+_WINDY_URL = "https://api.windy.com/webcams/api/v3/webcams"
+
+
 class CCTVFetcher(BaseFetcher):
-    """Fetches surveillance cameras from Overpass — one batch per refresh cycle."""
+    """Fetches surveillance cameras from Overpass + TfL JamCams + optional Windy."""
 
     @staticmethod
     def _build_query(cities: list) -> str:
@@ -148,7 +153,79 @@ class CCTVFetcher(BaseFetcher):
         logger.warning("CCTV [%s]: all mirrors failed", ", ".join(names))
         return []
 
+    async def _fetch_tfl(self, client: httpx.AsyncClient) -> List[dict]:
+        """Fetch TfL JamCam cameras (900 London cameras with live images)."""
+        results: List[dict] = []
+        try:
+            resp = await client.get(_TFL_URL, timeout=_TIMEOUT)
+            resp.raise_for_status()
+            places = resp.json()
+            for place in places:
+                lat = place.get("lat")
+                lon = place.get("lon")
+                if lat is None or lon is None:
+                    continue
+                props = {p["key"]: p["value"] for p in (place.get("additionalProperties") or [])}
+                results.append({
+                    "name": place.get("commonName", "JamCam"),
+                    "city": "London",
+                    "country": "GB",
+                    "latitude": float(lat),
+                    "longitude": float(lon),
+                    "type": "traffic",
+                    "operator": "TfL",
+                    "stream_url": props.get("imageUrl", ""),
+                    "thumbnail": props.get("imageUrl", ""),
+                    "source": "TfL JamCam",
+                })
+            logger.info("TfL JamCams: %d cameras", len(results))
+        except (httpx.HTTPError, httpx.TimeoutException, ValueError) as exc:
+            logger.warning("TfL JamCam fetch failed: %s", exc)
+        return results
+
+    async def _fetch_windy(self, client: httpx.AsyncClient) -> List[dict]:
+        """Fetch webcams from Windy API (requires WINDY_API_KEY)."""
+        if not WINDY_API_KEY:
+            return []
+        results: List[dict] = []
+        try:
+            resp = await client.get(
+                _WINDY_URL,
+                params={"limit": 500, "include": "location,images"},
+                headers={"x-windy-api-key": WINDY_API_KEY},
+                timeout=_TIMEOUT,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            webcams = data.get("webcams") or data if isinstance(data, list) else data.get("webcams", [])
+            for cam in webcams[:500]:
+                loc = cam.get("location", {})
+                lat = loc.get("latitude")
+                lon = loc.get("longitude")
+                if lat is None or lon is None:
+                    continue
+                images = cam.get("images", {})
+                current = images.get("current", {})
+                thumbnail = current.get("thumbnail", current.get("preview", ""))
+                results.append({
+                    "name": cam.get("title", "Webcam"),
+                    "city": loc.get("city", ""),
+                    "country": loc.get("country", ""),
+                    "latitude": float(lat),
+                    "longitude": float(lon),
+                    "type": "webcam",
+                    "operator": "Windy",
+                    "stream_url": cam.get("url", ""),
+                    "thumbnail": thumbnail,
+                    "source": "Windy Webcams",
+                })
+            logger.info("Windy Webcams: %d cameras", len(results))
+        except (httpx.HTTPError, httpx.TimeoutException, ValueError) as exc:
+            logger.warning("Windy Webcam fetch failed: %s", exc)
+        return results
+
     async def fetch(self, client: httpx.AsyncClient) -> List[dict]:
+        """Fetch cameras from Overpass + TfL + Windy, merge all."""
         global _accumulated, _batch_index
 
         # Split all cities into batches of 4
@@ -157,9 +234,16 @@ class CCTVFetcher(BaseFetcher):
             for i in range(0, len(_CITIES), _BATCH_SIZE)
         ]
 
-        # Fetch ONE batch this cycle (fast — no sleeps, ~3-5 seconds)
+        # Fetch ONE Overpass batch this cycle (fast — no sleeps, ~3-5 seconds)
         batch = all_batches[_batch_index % len(all_batches)]
         new_cameras = await self._fetch_batch(batch)
+
+        # Also fetch TfL + Windy on first cycle (they're fast)
+        if _batch_index == 0 or _batch_index % len(all_batches) == 0:
+            tfl_cams = await self._fetch_tfl(client)
+            new_cameras.extend(tfl_cams)
+            windy_cams = await self._fetch_windy(client)
+            new_cameras.extend(windy_cams)
 
         # Deduplicate by (lat, lon) and merge into accumulated set
         existing = {(c["latitude"], c["longitude"]) for c in _accumulated}

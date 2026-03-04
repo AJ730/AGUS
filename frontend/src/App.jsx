@@ -394,11 +394,8 @@ export default function App() {
           } else if (cctv.stream_url) {
             window.open(cctv.stream_url, '_blank', 'width=800,height=600')
           } else if (isFinite(cctv.lat) && isFinite(cctv.lon)) {
-            viewerRef.current.camera.flyTo({
-              destination: Cesium.Cartesian3.fromDegrees(cctv.lon, cctv.lat, 500),
-              orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 },
-              duration: 1.5,
-            })
+            // No stream URL — open Street View for camera perception
+            setStreetViewPanel({ lat: cctv.lat, lon: cctv.lon, heading: 0, name: cctv.name || 'CCTV View' })
           }
         }
       }
@@ -984,9 +981,14 @@ export default function App() {
         }
       }
 
-      // Update flight panel with latest detail
+      // Update flight panel with latest detail (never downgrade military→civilian)
       if (state) {
-        setFlightPanel(prev => prev ? { ...prev, ...state } : state)
+        setFlightPanel(prev => {
+          if (!prev) return state
+          const merged = { ...prev, ...state }
+          if (prev.is_military && !state.is_military) merged.is_military = true
+          return merged
+        })
       }
     } catch { /* ignore tracking errors */ }
   }, [])

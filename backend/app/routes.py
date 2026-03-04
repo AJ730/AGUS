@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .cache import CacheEntry, CacheManager
 from .flight_intel import FlightIntelligence
+from .mil_hex_db import is_military_hex
 from . import llm
 from .fetchers.sat_analysis import correlate_with_conflicts
 
@@ -465,6 +466,76 @@ async def gps_jamming(request: Request):
 @router.get("/natural_events")
 async def natural_events(request: Request):
     return await _layer_response(request, "natural_events")
+
+
+@router.get("/space_weather")
+async def space_weather(request: Request):
+    return await _layer_response(request, "space_weather")
+
+
+@router.get("/air_quality")
+async def air_quality(request: Request):
+    return await _layer_response(request, "air_quality")
+
+
+@router.get("/cyclones")
+async def cyclones(request: Request):
+    return await _layer_response(request, "cyclones")
+
+
+@router.get("/volcanoes")
+async def volcanoes(request: Request):
+    return await _layer_response(request, "volcanoes")
+
+
+@router.get("/asteroids")
+async def asteroids(request: Request):
+    return await _layer_response(request, "asteroids")
+
+
+@router.get("/radiosondes")
+async def radiosondes(request: Request):
+    return await _layer_response(request, "radiosondes")
+
+
+@router.get("/disease_outbreaks")
+async def disease_outbreaks(request: Request):
+    return await _layer_response(request, "disease_outbreaks")
+
+
+@router.get("/border_crossings")
+async def border_crossings(request: Request):
+    return await _layer_response(request, "border_crossings")
+
+
+@router.get("/mastodon_osint")
+async def mastodon_osint(request: Request):
+    return await _layer_response(request, "mastodon_osint")
+
+
+@router.get("/space_launches")
+async def space_launches(request: Request):
+    return await _layer_response(request, "space_launches")
+
+
+@router.get("/protests")
+async def protests(request: Request):
+    return await _layer_response(request, "protests")
+
+
+@router.get("/critical_infrastructure")
+async def critical_infrastructure(request: Request):
+    return await _layer_response(request, "critical_infrastructure")
+
+
+@router.get("/deforestation")
+async def deforestation(request: Request):
+    return await _layer_response(request, "deforestation")
+
+
+@router.get("/n2yo_satellites")
+async def n2yo_satellites(request: Request):
+    return await _layer_response(request, "n2yo_satellites")
 
 
 # ---------------------------------------------------------------------------
@@ -1063,7 +1134,13 @@ async def _fetch_flight_detail(client: httpx.AsyncClient, icao24: str, intel: Fl
                 "aircraft_type": ac.get("t", intel.estimate_aircraft_type(icao24)),
                 "registration": ac.get("r", ""),
                 "flight_route": intel.estimate_route(callsign),
-                "is_military": intel.is_military(callsign, icao24) or intel.is_military_dbflags(ac.get("dbFlags", 0)),
+                "is_military": (
+                    intel.is_military(callsign, icao24)
+                    or (intel.is_military_dbflags(ac.get("dbFlags", 0))
+                        and not intel.is_civilian_airline(callsign))
+                    or (bool(is_military_hex(icao24))
+                        and not intel.is_civilian_airline(callsign))
+                ),
                 "squawk_alert": intel.detect_squawk_alert(squawk) if squawk else None,
             }
     except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as exc:

@@ -1194,3 +1194,436 @@ export function getMissileIcon(color = '#dc2626', size = 32) {
     ctx.fill()
   })
 }
+
+// ==================== 34. SPACE WEATHER (solar flare / aurora) ====================
+export function getSpaceWeatherIcon(color = '#c084fc', size = 32) {
+  return cached('space_weather', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Sun circle
+    ctx.beginPath()
+    ctx.arc(cx, cy, 8 * s, 0, Math.PI * 2)
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    // Rays
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1.5 * s
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2
+      ctx.beginPath()
+      ctx.moveTo(cx + Math.cos(angle) * 10 * s, cy + Math.sin(angle) * 10 * s)
+      ctx.lineTo(cx + Math.cos(angle) * 14 * s, cy + Math.sin(angle) * 14 * s)
+      ctx.stroke()
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.beginPath()
+    ctx.arc(cx, cy - 2 * s, 3 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 35. AIR QUALITY (cloud) ====================
+export function getAirQualityIcon(color = '#4ade80', size = 32) {
+  return cached('air_quality', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    ctx.beginPath()
+    ctx.arc(cx - 4 * s, cy, 6 * s, Math.PI * 0.7, Math.PI * 2.3)
+    ctx.arc(cx + 3 * s, cy - 3 * s, 5 * s, Math.PI * 1.2, Math.PI * 2.6)
+    ctx.arc(cx + 6 * s, cy + 1 * s, 4 * s, Math.PI * 1.5, Math.PI * 0.5)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.beginPath()
+    ctx.arc(cx, cy - 1 * s, 2.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 36. CYCLONE (spiral) ====================
+export function getCycloneIcon(color = '#38bdf8', size = 32) {
+  return cached('cyclone', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2.5 * s
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    for (let t = 0; t < Math.PI * 4; t += 0.1) {
+      const r = (2 + t * 2.5) * s
+      const x = cx + Math.cos(t) * r
+      const y = cy + Math.sin(t) * r
+      if (t === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+    clearShadow(ctx)
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, 3 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 37. VOLCANO ====================
+export function getVolcanoIcon(color = '#ef4444', size = 32) {
+  return cached('volcano', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = '#6b4226'
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 12 * s, cy + 12 * s)
+    ctx.lineTo(cx - 4 * s, cy - 6 * s)
+    ctx.lineTo(cx + 4 * s, cy - 6 * s)
+    ctx.lineTo(cx + 12 * s, cy + 12 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.moveTo(cx - 4 * s, cy - 6 * s)
+    ctx.lineTo(cx - 2 * s, cy - 12 * s)
+    ctx.lineTo(cx, cy - 9 * s)
+    ctx.lineTo(cx + 2 * s, cy - 13 * s)
+    ctx.lineTo(cx + 4 * s, cy - 6 * s)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#fbbf24'
+    ctx.beginPath()
+    ctx.arc(cx, cy - 7 * s, 2 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 38. ASTEROID ====================
+export function getAsteroidIcon(color = '#fbbf24', size = 32) {
+  return cached('asteroid', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = '#9ca3af'
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 2 * s, cy - 10 * s)
+    ctx.lineTo(cx + 6 * s, cy - 8 * s)
+    ctx.lineTo(cx + 10 * s, cy - 2 * s)
+    ctx.lineTo(cx + 8 * s, cy + 6 * s)
+    ctx.lineTo(cx + 2 * s, cy + 10 * s)
+    ctx.lineTo(cx - 6 * s, cy + 8 * s)
+    ctx.lineTo(cx - 10 * s, cy + 2 * s)
+    ctx.lineTo(cx - 8 * s, cy - 6 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'
+    ctx.beginPath()
+    ctx.arc(cx - 2 * s, cy - 2 * s, 2.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx + 4 * s, cy + 3 * s, 1.8 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1.5 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 10 * s, cy - 6 * s)
+    ctx.lineTo(cx - 15 * s, cy - 12 * s)
+    ctx.stroke()
+  })
+}
+
+// ==================== 39. RADIOSONDE (weather balloon) ====================
+export function getRadiosondeIcon(color = '#67e8f9', size = 32) {
+  return cached('radiosonde', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.lineWidth = 0.7 * s
+    ctx.beginPath()
+    ctx.arc(cx, cy - 5 * s, 7 * s, 0, Math.PI * 2)
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 0.6 * s
+    ctx.beginPath()
+    ctx.moveTo(cx, cy + 2 * s)
+    ctx.lineTo(cx, cy + 9 * s)
+    ctx.stroke()
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'
+    ctx.fillRect(cx - 3 * s, cy + 9 * s, 6 * s, 4 * s)
+    ctx.strokeRect(cx - 3 * s, cy + 9 * s, 6 * s, 4 * s)
+  })
+}
+
+// ==================== 40. DISEASE OUTBREAK (biohazard) ====================
+export function getDiseaseOutbreakIcon(color = '#f472b6', size = 32) {
+  return cached('disease', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2 * s
+    ctx.fillStyle = color
+    const r = 7 * s
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI * 2 - Math.PI / 2
+      const ox = cx + Math.cos(angle) * 4 * s
+      const oy = cy + Math.sin(angle) * 4 * s
+      ctx.beginPath()
+      ctx.arc(ox, oy, r, angle - 0.8, angle + 0.8)
+      ctx.stroke()
+    }
+    clearShadow(ctx)
+    ctx.beginPath()
+    ctx.arc(cx, cy, 2.5 * s, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 41. BORDER CROSSING (gate) ====================
+export function getBorderCrossingIcon(color = '#a3e635', size = 32) {
+  return cached('border', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    ctx.fillRect(cx - 10 * s, cy - 4 * s, 3 * s, 16 * s)
+    ctx.strokeRect(cx - 10 * s, cy - 4 * s, 3 * s, 16 * s)
+    ctx.fillRect(cx + 7 * s, cy - 4 * s, 3 * s, 16 * s)
+    ctx.strokeRect(cx + 7 * s, cy - 4 * s, 3 * s, 16 * s)
+    clearShadow(ctx)
+    ctx.fillStyle = '#ef4444'
+    ctx.fillRect(cx - 10 * s, cy - 4 * s, 20 * s, 3 * s)
+    ctx.strokeRect(cx - 10 * s, cy - 4 * s, 20 * s, 3 * s)
+    ctx.fillStyle = '#fbbf24'
+    for (let x = -8; x < 10; x += 4) {
+      ctx.fillRect(cx + x * s, cy - 4 * s, 2 * s, 3 * s)
+    }
+  })
+}
+
+// ==================== 42. MASTODON OSINT ====================
+export function getMastodonIcon(color = '#6366f1', size = 32) {
+  return cached('mastodon', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 8 * s, cy + 10 * s)
+    ctx.lineTo(cx - 8 * s, cy - 4 * s)
+    ctx.quadraticCurveTo(cx - 8 * s, cy - 12 * s, cx, cy - 12 * s)
+    ctx.quadraticCurveTo(cx + 8 * s, cy - 12 * s, cx + 8 * s, cy - 4 * s)
+    ctx.lineTo(cx + 8 * s, cy + 10 * s)
+    ctx.lineTo(cx + 5 * s, cy + 10 * s)
+    ctx.lineTo(cx + 5 * s, cy - 2 * s)
+    ctx.quadraticCurveTo(cx + 5 * s, cy - 8 * s, cx, cy - 8 * s)
+    ctx.quadraticCurveTo(cx - 5 * s, cy - 8 * s, cx - 5 * s, cy - 2 * s)
+    ctx.lineTo(cx - 5 * s, cy + 10 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    clearShadow(ctx)
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.beginPath()
+    ctx.arc(cx - 3 * s, cy - 4 * s, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx + 3 * s, cy - 4 * s, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 43. SPACE LAUNCH (rocket) ====================
+export function getSpaceLaunchIcon(color = '#f59e0b', size = 32) {
+  return cached('spaceLaunch', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Rocket body
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - 14 * s)
+    ctx.lineTo(cx - 4 * s, cy - 4 * s)
+    ctx.lineTo(cx - 4 * s, cy + 8 * s)
+    ctx.lineTo(cx + 4 * s, cy + 8 * s)
+    ctx.lineTo(cx + 4 * s, cy - 4 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    // Fins
+    ctx.beginPath()
+    ctx.moveTo(cx - 4 * s, cy + 5 * s)
+    ctx.lineTo(cx - 8 * s, cy + 12 * s)
+    ctx.lineTo(cx - 4 * s, cy + 8 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(cx + 4 * s, cy + 5 * s)
+    ctx.lineTo(cx + 8 * s, cy + 12 * s)
+    ctx.lineTo(cx + 4 * s, cy + 8 * s)
+    ctx.closePath()
+    ctx.fill(); ctx.stroke()
+    // Flame
+    clearShadow(ctx)
+    ctx.fillStyle = '#ff6b00'
+    ctx.beginPath()
+    ctx.moveTo(cx - 2.5 * s, cy + 8 * s)
+    ctx.lineTo(cx, cy + 14 * s)
+    ctx.lineTo(cx + 2.5 * s, cy + 8 * s)
+    ctx.closePath()
+    ctx.fill()
+    // Window
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.beginPath()
+    ctx.arc(cx, cy - 2 * s, 2 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+// ==================== 44. PROTEST (raised fist) ====================
+export function getProtestIcon(color = '#f97316', size = 32) {
+  return cached('protest', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Fist — simplified rectangle with fingers
+    ctx.beginPath()
+    ctx.roundRect(cx - 5 * s, cy - 6 * s, 10 * s, 12 * s, 3 * s)
+    ctx.fill(); ctx.stroke()
+    // Arm
+    ctx.fillRect(cx - 3 * s, cy + 6 * s, 6 * s, 6 * s)
+    ctx.strokeRect(cx - 3 * s, cy + 6 * s, 6 * s, 6 * s)
+    // Finger lines
+    clearShadow(ctx)
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+    ctx.lineWidth = 0.5 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 3 * s, cy - 2 * s)
+    ctx.lineTo(cx + 3 * s, cy - 2 * s)
+    ctx.moveTo(cx - 3 * s, cy + 2 * s)
+    ctx.lineTo(cx + 3 * s, cy + 2 * s)
+    ctx.stroke()
+  })
+}
+
+// ==================== 45. CRITICAL INFRASTRUCTURE (factory) ====================
+export function getInfrastructureIcon(color = '#94a3b8', size = 32) {
+  return cached('infrastructure', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Building
+    ctx.beginPath()
+    ctx.rect(cx - 8 * s, cy - 2 * s, 16 * s, 14 * s)
+    ctx.fill(); ctx.stroke()
+    // Smokestack 1
+    ctx.beginPath()
+    ctx.rect(cx - 6 * s, cy - 10 * s, 4 * s, 8 * s)
+    ctx.fill(); ctx.stroke()
+    // Smokestack 2
+    ctx.beginPath()
+    ctx.rect(cx + 2 * s, cy - 8 * s, 3 * s, 6 * s)
+    ctx.fill(); ctx.stroke()
+    // Smoke puffs
+    clearShadow(ctx)
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.beginPath()
+    ctx.arc(cx - 4 * s, cy - 12 * s, 2 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx + 3.5 * s, cy - 10 * s, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+    // Windows
+    ctx.fillStyle = 'rgba(255,255,200,0.6)'
+    ctx.fillRect(cx - 5 * s, cy + 2 * s, 3 * s, 3 * s)
+    ctx.fillRect(cx + 2 * s, cy + 2 * s, 3 * s, 3 * s)
+  })
+}
+
+// ==================== 46. DEFORESTATION (tree stump) ====================
+export function getDeforestationIcon(color = '#22c55e', size = 32) {
+  return cached('deforestation', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    // Tree stump
+    ctx.fillStyle = '#8B4513'
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    ctx.beginPath()
+    ctx.rect(cx - 4 * s, cy - 2 * s, 8 * s, 14 * s)
+    ctx.fill(); ctx.stroke()
+    // Stump rings
+    clearShadow(ctx)
+    ctx.fillStyle = '#D2B48C'
+    ctx.beginPath()
+    ctx.ellipse(cx, cy - 2 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2)
+    ctx.fill(); ctx.stroke()
+    // Ring detail
+    ctx.strokeStyle = '#8B4513'
+    ctx.lineWidth = 0.4 * s
+    ctx.beginPath()
+    ctx.ellipse(cx, cy - 2 * s, 3 * s, 1.5 * s, 0, 0, Math.PI * 2)
+    ctx.stroke()
+    // Red X (deforestation indicator)
+    ctx.strokeStyle = '#ef4444'
+    ctx.lineWidth = 2 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 8 * s, cy - 10 * s)
+    ctx.lineTo(cx + 8 * s, cy + 4 * s)
+    ctx.moveTo(cx + 8 * s, cy - 10 * s)
+    ctx.lineTo(cx - 8 * s, cy + 4 * s)
+    ctx.stroke()
+  })
+}
+
+// ==================== 47. N2YO SATELLITE (tracked satellite) ====================
+export function getN2YOSatelliteIcon(color = '#60a5fa', size = 32) {
+  return cached('n2yoSat', color, size, (ctx, cx, cy, s) => {
+    applyShadow(ctx, s)
+    ctx.fillStyle = color
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+    ctx.lineWidth = 0.8 * s
+    // Body
+    ctx.beginPath()
+    ctx.rect(cx - 3 * s, cy - 3 * s, 6 * s, 6 * s)
+    ctx.fill(); ctx.stroke()
+    // Solar panel left
+    ctx.beginPath()
+    ctx.rect(cx - 13 * s, cy - 4 * s, 9 * s, 8 * s)
+    ctx.fill(); ctx.stroke()
+    // Solar panel right
+    ctx.beginPath()
+    ctx.rect(cx + 4 * s, cy - 4 * s, 9 * s, 8 * s)
+    ctx.fill(); ctx.stroke()
+    // Panel grid lines
+    clearShadow(ctx)
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+    ctx.lineWidth = 0.4 * s
+    // Left panel grid
+    ctx.beginPath()
+    ctx.moveTo(cx - 8.5 * s, cy - 4 * s); ctx.lineTo(cx - 8.5 * s, cy + 4 * s)
+    ctx.moveTo(cx - 13 * s, cy); ctx.lineTo(cx - 4 * s, cy)
+    ctx.stroke()
+    // Right panel grid
+    ctx.beginPath()
+    ctx.moveTo(cx + 8.5 * s, cy - 4 * s); ctx.lineTo(cx + 8.5 * s, cy + 4 * s)
+    ctx.moveTo(cx + 4 * s, cy); ctx.lineTo(cx + 13 * s, cy)
+    ctx.stroke()
+    // Center dot
+    ctx.fillStyle = '#fff'
+    ctx.beginPath()
+    ctx.arc(cx, cy, 1.5 * s, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}

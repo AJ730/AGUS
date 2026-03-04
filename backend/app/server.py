@@ -56,6 +56,20 @@ from .fetchers import (
     InternetOutageFetcher,
     GPSJammingFetcher,
     EONETFetcher,
+    SpaceWeatherFetcher,
+    AirQualityFetcher,
+    CycloneFetcher,
+    VolcanoFetcher,
+    AsteroidFetcher,
+    RadiosondeFetcher,
+    DiseaseOutbreakFetcher,
+    BorderWaitFetcher,
+    MastodonOSINTFetcher,
+    SpaceLaunchFetcher,
+    ProtestFetcher,
+    CriticalInfrastructureFetcher,
+    DeforestationFetcher,
+    N2YOSatelliteFetcher,
 )
 from .flight_intel import FlightIntelligence
 from .routes import router
@@ -116,6 +130,20 @@ def create_app() -> FastAPI:
     registry.register("internet_outages", InternetOutageFetcher())
     registry.register("gps_jamming", GPSJammingFetcher())
     registry.register("natural_events", EONETFetcher())
+    registry.register("space_weather", SpaceWeatherFetcher())
+    registry.register("air_quality", AirQualityFetcher())
+    registry.register("cyclones", CycloneFetcher())
+    registry.register("volcanoes", VolcanoFetcher())
+    registry.register("asteroids", AsteroidFetcher())
+    registry.register("radiosondes", RadiosondeFetcher())
+    registry.register("disease_outbreaks", DiseaseOutbreakFetcher())
+    registry.register("border_crossings", BorderWaitFetcher())
+    registry.register("mastodon_osint", MastodonOSINTFetcher())
+    registry.register("space_launches", SpaceLaunchFetcher())
+    registry.register("protests", ProtestFetcher())
+    registry.register("critical_infrastructure", CriticalInfrastructureFetcher())
+    registry.register("deforestation", DeforestationFetcher())
+    registry.register("n2yo_satellites", N2YOSatelliteFetcher())
 
     # --- HTTP client ref (created in lifespan) ---
     http_client_ref: dict = {"client": None}
@@ -140,6 +168,8 @@ def create_app() -> FastAPI:
             cache.get("flights", fetcher_fns["flights"]),
             cache.get("vessels", fetcher_fns["vessels"]),
             cache.get("satellites", fetcher_fns["satellites"]),
+            cache.get("radiosondes", fetcher_fns["radiosondes"]),
+            cache.get("n2yo_satellites", fetcher_fns["n2yo_satellites"]),
             return_exceptions=True,
         )
 
@@ -162,6 +192,9 @@ def create_app() -> FastAPI:
             cache.get("telegram_osint", fetcher_fns["telegram_osint"]),
             cache.get("reddit_osint", fetcher_fns["reddit_osint"]),
             cache.get("internet_outages", fetcher_fns["internet_outages"]),
+            cache.get("mastodon_osint", fetcher_fns["mastodon_osint"]),
+            cache.get("space_weather", fetcher_fns["space_weather"]),
+            cache.get("space_launches", fetcher_fns["space_launches"]),
             return_exceptions=True,
         )
 
@@ -169,7 +202,7 @@ def create_app() -> FastAPI:
         """Stagger GDELT-dependent sources to avoid rate limiting."""
         await cache.get("cyber", fetcher_fns["cyber"])
         await cache.get("threat_intel", fetcher_fns["threat_intel"])
-        for name in ["conflicts", "cctv", "terrorism", "piracy", "news", "missile_tests"]:
+        for name in ["conflicts", "cctv", "terrorism", "piracy", "news", "missile_tests", "protests", "deforestation"]:
             await cache.get(name, fetcher_fns[name])
             await asyncio.sleep(3.0)
 
@@ -188,6 +221,10 @@ def create_app() -> FastAPI:
             cache.get("live_streams", fetcher_fns["live_streams"]),
             cache.get("equipment_losses", fetcher_fns["equipment_losses"]),
             cache.get("gps_jamming", fetcher_fns["gps_jamming"]),
+            cache.get("volcanoes", fetcher_fns["volcanoes"]),
+            cache.get("asteroids", fetcher_fns["asteroids"]),
+            cache.get("disease_outbreaks", fetcher_fns["disease_outbreaks"]),
+            cache.get("critical_infrastructure", fetcher_fns["critical_infrastructure"]),
             return_exceptions=True,
         )
         await asyncio.sleep(2.0)

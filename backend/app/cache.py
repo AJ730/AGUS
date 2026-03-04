@@ -41,6 +41,8 @@ HISTORY_LAYERS = frozenset({
     "telegram_osint", "reddit_osint", "news", "events", "terrorism",
     "fires", "weather_alerts", "geo_confirmed", "equipment_losses",
     "internet_outages", "gps_jamming", "natural_events",
+    "cyclones", "disease_outbreaks", "mastodon_osint", "space_weather",
+    "protests", "deforestation",
 })
 
 MAX_SNAPSHOTS_PER_LAYER = 48  # ~24h at 30min intervals
@@ -183,17 +185,21 @@ class CacheManager:
         wave1a = ["earthquakes", "weather_alerts", "cyber", "refugees",
                   "threat_intel", "signals", "satellites",
                   "reddit_osint", "telegram_osint", "live_streams",
-                  "rocket_alerts", "natural_events"]
+                  "rocket_alerts", "natural_events", "space_weather",
+                  "radiosondes", "mastodon_osint", "border_crossings",
+                  "space_launches", "n2yo_satellites"]
         # Wave 1b: Medium sources (Wikidata SPARQL, moderate size)
         wave1b = ["vessels", "nuclear", "submarines", "carriers",
                   "sanctions", "undersea_cables", "geo_confirmed",
-                  "gps_jamming", "equipment_losses", "internet_outages"]
+                  "gps_jamming", "equipment_losses", "internet_outages",
+                  "cyclones", "volcanoes", "disease_outbreaks", "asteroids",
+                  "critical_infrastructure"]
         # Wave 1c: Heavy sources (large CSVs, multiple API calls)
-        wave1c = ["fires", "airports", "flights"]
+        wave1c = ["fires", "airports", "flights", "air_quality"]
         # Wave 2: GDELT-dependent sources (stagger to avoid rate limits)
         wave2 = ["events", "conflicts", "cctv", "terrorism", "piracy",
                  "airspace", "notams", "military_bases", "news",
-                 "missile_tests"]
+                 "missile_tests", "protests", "deforestation"]
 
         for label, wave in [("1a-quick", wave1a), ("1b-medium", wave1b),
                             ("1c-heavy", wave1c)]:

@@ -12,6 +12,11 @@ import {
   getLiveStreamIcon, getRedditIcon,
   getEquipmentLossIcon, getInternetOutageIcon, getGPSJammingIcon,
   getNaturalEventIcon,
+  getSpaceWeatherIcon, getAirQualityIcon, getCycloneIcon, getVolcanoIcon,
+  getAsteroidIcon, getRadiosondeIcon, getDiseaseOutbreakIcon,
+  getBorderCrossingIcon, getMastodonIcon,
+  getSpaceLaunchIcon, getProtestIcon, getInfrastructureIcon,
+  getDeforestationIcon, getN2YOSatelliteIcon,
 } from './icons'
 
 // Build entities for a given layer from raw data items.
@@ -231,7 +236,7 @@ function buildCctv(ds, props, geom, lon, lat, cfg) {
       Coords: lat.toFixed(4) + ', ' + lon.toFixed(4),
     },
   }
-  entity._cctvData = { name: camName, stream_url: props.stream_url || props.url, lat, lon }
+  entity._cctvData = { name: camName, stream_url: props.stream_url || props.url || '', thumbnail: props.thumbnail || '', lat, lon }
 }
 
 function buildFire(ds, props, geom, lon, lat, cfg) {
@@ -1222,6 +1227,414 @@ function buildNaturalEvent(ds, props, geom, lon, lat, cfg) {
   }
 }
 
+function buildSpaceWeather(ds, props, geom, lon, lat, cfg) {
+  const kp = props.kp_value ?? ''
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getSpaceWeatherIcon(cfg.color, 32),
+      width: 24,
+      height: 24,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.4),
+    },
+  })
+  entity._tooltipData = {
+    title: props.name || 'Space Weather',
+    rows: {
+      Category: props.category || '',
+      Severity: props.severity || '',
+      'Kp Index': kp !== '' ? String(kp) : '',
+      Date: props.date || '',
+      Source: props.source || 'NOAA SWPC',
+    },
+  }
+}
+
+function buildAirQuality(ds, props, geom, lon, lat, cfg) {
+  const aqi = props.aqi || 0
+  const color = aqi > 300 ? '#7e22ce' : aqi > 200 ? '#991b1b' : aqi > 150 ? '#ef4444'
+    : aqi > 100 ? '#f97316' : aqi > 50 ? '#eab308' : '#22c55e'
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getAirQualityIcon(color, 32),
+      width: 22,
+      height: 22,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.4),
+    },
+  })
+  entity._tooltipData = {
+    title: props.name || 'Air Quality',
+    rows: {
+      'US AQI': String(aqi),
+      Level: props.aqi_level || '',
+      'PM2.5': props.pm25 != null ? String(props.pm25) + ' \u00b5g/m\u00b3' : '',
+      'PM10': props.pm10 != null ? String(props.pm10) + ' \u00b5g/m\u00b3' : '',
+      'Ozone': props.ozone != null ? String(props.ozone) + ' \u00b5g/m\u00b3' : '',
+      'NO\u2082': props.no2 != null ? String(props.no2) + ' \u00b5g/m\u00b3' : '',
+      Source: props.source || 'Open-Meteo',
+    },
+  }
+}
+
+function buildCyclone(ds, props, geom, lon, lat, cfg) {
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getCycloneIcon(cfg.color, 32),
+      width: 32,
+      height: 32,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.5, 1e7, 0.6),
+    },
+  })
+  entity._tooltipData = {
+    title: '\uD83C\uDF00 ' + (props.name || 'Tropical Cyclone'),
+    rows: {
+      Category: props.category || '',
+      'Wind Speed': props.wind_speed ? props.wind_speed + ' kt' : '',
+      Pressure: props.pressure ? props.pressure + ' hPa' : '',
+      Movement: props.movement || '',
+      Basin: props.basin || '',
+      Source: props.source || 'NHC',
+    },
+  }
+}
+
+function buildVolcano(ds, props, geom, lon, lat, cfg) {
+  const level = (props.alert_level || 'Normal').toLowerCase()
+  const color = level === 'warning' || level === 'red' ? '#ef4444'
+    : level === 'watch' || level === 'orange' || level === 'elevated' ? '#f97316'
+    : level === 'advisory' || level === 'yellow' ? '#eab308'
+    : '#22c55e'
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getVolcanoIcon(color, 32),
+      width: 28,
+      height: 28,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: '\uD83C\uDF0B ' + (props.name || 'Volcano'),
+    rows: {
+      'Alert Level': props.alert_level || 'Normal',
+      'Aviation Color': props.aviation_color || '',
+      Country: props.country || '',
+      Date: props.date || '',
+      Source: props.source || 'USGS',
+    },
+  }
+}
+
+function buildAsteroid(ds, props, geom, lon, lat, cfg) {
+  // Asteroids don't have map positions; render at 0,0 as info markers
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getAsteroidIcon(cfg.color, 32),
+      width: 20,
+      height: 20,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.3),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u2604\uFE0F ' + (props.name || 'Asteroid'),
+    rows: {
+      'Close Approach': props.close_approach_date || '',
+      'Distance (AU)': props.distance_au ? String(Number(props.distance_au).toFixed(4)) : '',
+      'Distance (LD)': props.distance_ld ? String(props.distance_ld) + ' lunar' : '',
+      'Velocity': props.velocity_km_s ? String(Number(props.velocity_km_s).toFixed(1)) + ' km/s' : '',
+      'Est. Size': props.estimated_diameter || '',
+      'Threat': props.threat_level || '',
+      Source: 'NASA JPL',
+    },
+  }
+}
+
+function buildRadiosonde(ds, props, geom, lon, lat, cfg) {
+  const alt = props.altitude || 0
+  const phase = props.phase || 'Unknown'
+  const color = phase === 'Ascending' ? '#22c55e' : phase === 'Descending' ? '#ef4444' : '#eab308'
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, alt),
+    billboard: {
+      image: getRadiosondeIcon(color, 32),
+      width: 20,
+      height: 20,
+      heightReference: Cesium.HeightReference.NONE,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.3),
+    },
+  })
+  entity._tooltipData = {
+    title: '\uD83C\uDF88 ' + (props.name || 'Radiosonde'),
+    rows: {
+      Type: props.sonde_type || '',
+      Phase: phase,
+      Altitude: Math.round(alt).toLocaleString() + ' m',
+      Temperature: props.temperature != null ? props.temperature + ' \u00b0C' : '',
+      Frequency: props.frequency || '',
+      Source: 'SondeHub',
+    },
+  }
+}
+
+function buildDiseaseOutbreak(ds, props, geom, lon, lat, cfg) {
+  const severity = (props.severity || 'Medium').toLowerCase()
+  const color = severity === 'critical' ? '#7e22ce'
+    : severity === 'high' ? '#ef4444'
+    : severity === 'medium' ? '#f97316' : '#eab308'
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getDiseaseOutbreakIcon(color, 32),
+      width: 26,
+      height: 26,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: '\u2623\uFE0F ' + (props.name || 'Disease Outbreak').substring(0, 80),
+    rows: {
+      Disease: props.disease || '',
+      Severity: (props.severity || '').toUpperCase(),
+      Country: props.country || '',
+      'Cases Today': props.cases_today ? String(props.cases_today) : '',
+      Date: props.date || '',
+      Source: props.source || 'WHO',
+    },
+  }
+}
+
+function buildBorderCrossing(ds, props, geom, lon, lat, cfg) {
+  const wait = props.wait_minutes ?? -1
+  const color = wait < 0 ? '#6b7280' : wait < 30 ? '#22c55e'
+    : wait < 60 ? '#eab308' : wait < 120 ? '#f97316' : '#ef4444'
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getBorderCrossingIcon(color, 32),
+      width: 22,
+      height: 22,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.4),
+    },
+  })
+  entity._tooltipData = {
+    title: '\uD83D\uDEA7 ' + (props.name || 'Border Crossing'),
+    rows: {
+      'Wait Time': wait >= 0 ? wait + ' min' : 'N/A',
+      Level: props.wait_level || '',
+      Border: props.border || '',
+      'Lanes Open': props.lanes_open || '',
+      Source: 'CBP BWT',
+    },
+  }
+}
+
+function buildMastodonOsint(ds, props, geom, lon, lat, cfg) {
+  const entity = ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getMastodonIcon(cfg.color, 32),
+      width: 22,
+      height: 22,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: 1e5,
+      scaleByDistance: new Cesium.NearFarScalar(1e2, 2.0, 1e7, 0.5),
+    },
+  })
+  entity._tooltipData = {
+    title: '\uD83D\uDC18 ' + (props.name || 'Mastodon OSINT').substring(0, 80),
+    rows: {
+      Author: props.author || '',
+      Instance: props.instance || '',
+      Boosts: props.reblogs ? String(props.reblogs) : '',
+      Favourites: props.favourites ? String(props.favourites) : '',
+      Date: props.date ? props.date.substring(0, 19) : '',
+      Source: props.source || 'Mastodon',
+    },
+  }
+  if (props.url) {
+    entity._cctvData = { name: props.name, stream_url: props.url }
+  }
+}
+
+function buildSpaceLaunch(ds, props, geom, lon, lat, cfg) {
+  const upcoming = props.upcoming ? 'UPCOMING' : 'PREVIOUS'
+  const statusStr = props.status || ''
+  const label = `${props.name || 'Launch'}\n${upcoming} — ${statusStr}`
+  ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getSpaceLaunchIcon(upcoming === 'UPCOMING' ? '#f59e0b' : '#94a3b8', 32),
+      width: 28, height: 28,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+    },
+    label: {
+      text: label,
+      font: '11px monospace',
+      fillColor: hexColor(cfg.color, 0.95),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      pixelOffset: new Cesium.Cartesian2(0, -24),
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 5e6),
+    },
+    description: `<b>${props.name || 'Space Launch'}</b><br/>
+      Status: ${statusStr}<br/>
+      Rocket: ${props.rocket || ''}<br/>
+      Provider: ${props.provider || ''}<br/>
+      Mission: ${props.mission_name || ''} (${props.mission_type || ''})<br/>
+      Orbit: ${props.orbit || ''}<br/>
+      Pad: ${props.pad_name || ''}<br/>
+      Location: ${props.location || ''}<br/>
+      NET: ${props.net || ''}<br/>
+      Source: ${props.source || 'Launch Library 2'}`,
+  })
+}
+
+function buildProtest(ds, props, geom, lon, lat, cfg) {
+  const sev = (props.severity || 'Low').toUpperCase()
+  const color = sev === 'CRITICAL' ? '#dc2626' : sev === 'HIGH' ? '#f97316' : sev === 'MEDIUM' ? '#eab308' : '#94a3b8'
+  ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getProtestIcon(color, 28),
+      width: 24, height: 24,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+    },
+    label: {
+      text: (props.name || 'Protest').substring(0, 40),
+      font: '10px monospace',
+      fillColor: hexColor(color, 0.9),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      pixelOffset: new Cesium.Cartesian2(0, -22),
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2e6),
+    },
+    description: `<b>${props.name || 'Protest'}</b><br/>
+      Type: ${props.event_type || ''} — ${props.sub_type || ''}<br/>
+      Country: ${props.country || ''}<br/>
+      Severity: ${props.severity || ''}<br/>
+      Fatalities: ${props.fatalities || 0}<br/>
+      Actor: ${props.actor || ''}<br/>
+      Date: ${props.date || ''}<br/>
+      Source: ${props.source || ''}`,
+  })
+}
+
+function buildCriticalInfrastructure(ds, props, geom, lon, lat, cfg) {
+  const typeLabel = props.type_label || 'Infrastructure'
+  const color = props.infra_type === 'power_plant' ? '#fbbf24'
+    : props.infra_type === 'dam' ? '#3b82f6'
+    : '#ef4444'
+  ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getInfrastructureIcon(color, 28),
+      width: 24, height: 24,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+    },
+    label: {
+      text: (props.name || typeLabel).substring(0, 35),
+      font: '10px monospace',
+      fillColor: hexColor(color, 0.9),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      pixelOffset: new Cesium.Cartesian2(0, -22),
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1e6),
+    },
+    description: `<b>${props.name || typeLabel}</b><br/>
+      Type: ${typeLabel}<br/>
+      Operator: ${props.operator || ''}<br/>
+      Output: ${props.output || ''}<br/>
+      Fuel: ${props.fuel || ''}<br/>
+      Country: ${props.country || ''}<br/>
+      Source: ${props.source || 'OpenStreetMap'}`,
+  })
+}
+
+function buildDeforestation(ds, props, geom, lon, lat, cfg) {
+  const sev = (props.severity || 'Medium').toUpperCase()
+  const color = sev === 'HIGH' ? '#ef4444' : '#22c55e'
+  ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    billboard: {
+      image: getDeforestationIcon(color, 28),
+      width: 24, height: 24,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+    },
+    label: {
+      text: (props.name || 'Deforestation').substring(0, 40),
+      font: '10px monospace',
+      fillColor: hexColor(color, 0.9),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      pixelOffset: new Cesium.Cartesian2(0, -22),
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3e6),
+    },
+    description: `<b>${props.name || 'Deforestation Alert'}</b><br/>
+      Severity: ${props.severity || ''}<br/>
+      Confidence: ${props.confidence || ''}<br/>
+      Alert Type: ${props.alert_type || ''}<br/>
+      Date: ${props.date || ''}<br/>
+      Country: ${props.country || ''}<br/>
+      Source: ${props.source || ''}`,
+  })
+}
+
+function buildN2YOSatellite(ds, props, geom, lon, lat, cfg) {
+  const alt = props.altitude_km || 0
+  const cat = props.category || 'Unknown'
+  const color = cat === 'Space Station' ? '#f59e0b'
+    : cat === 'Reconnaissance' ? '#ef4444'
+    : cat === 'Science' ? '#8b5cf6'
+    : '#60a5fa'
+  ds.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, alt * 1000),
+    billboard: {
+      image: getN2YOSatelliteIcon(color, 32),
+      width: 28, height: 28,
+    },
+    label: {
+      text: `${props.name || 'Satellite'}\n${alt.toFixed(0)} km`,
+      font: '10px monospace',
+      fillColor: hexColor(color, 0.95),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      pixelOffset: new Cesium.Cartesian2(0, -24),
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2e7),
+    },
+    description: `<b>${props.name || 'Satellite'}</b><br/>
+      NORAD ID: ${props.norad_id || ''}<br/>
+      Category: ${cat}<br/>
+      Altitude: ${alt.toFixed(1)} km<br/>
+      Azimuth: ${props.azimuth || 0}°<br/>
+      Elevation: ${props.elevation || 0}°<br/>
+      Eclipsed: ${props.eclipsed ? 'Yes' : 'No'}<br/>
+      Source: N2YO`,
+  })
+}
+
 function buildDefault(ds, props, geom, lon, lat, cfg) {
   if (!isFinite(lon) || !isFinite(lat)) return
   ds.entities.add({
@@ -1272,4 +1685,18 @@ const ENTITY_BUILDERS = {
   internet_outages: buildInternetOutage,
   gps_jamming: buildGPSJamming,
   natural_events: buildNaturalEvent,
+  space_weather: buildSpaceWeather,
+  air_quality: buildAirQuality,
+  cyclones: buildCyclone,
+  volcanoes: buildVolcano,
+  asteroids: buildAsteroid,
+  radiosondes: buildRadiosonde,
+  disease_outbreaks: buildDiseaseOutbreak,
+  border_crossings: buildBorderCrossing,
+  mastodon_osint: buildMastodonOsint,
+  space_launches: buildSpaceLaunch,
+  protests: buildProtest,
+  critical_infrastructure: buildCriticalInfrastructure,
+  deforestation: buildDeforestation,
+  n2yo_satellites: buildN2YOSatellite,
 }

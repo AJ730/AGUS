@@ -36,6 +36,20 @@ from .equipment_losses import EquipmentLossFetcher
 from .internet_outages import InternetOutageFetcher
 from .gps_jamming import GPSJammingFetcher
 from .eonet import EONETFetcher
+from .space_weather import SpaceWeatherFetcher
+from .air_quality import AirQualityFetcher
+from .cyclones import CycloneFetcher
+from .volcanoes import VolcanoFetcher
+from .asteroids import AsteroidFetcher
+from .radiosondes import RadiosondeFetcher
+from .disease_outbreaks import DiseaseOutbreakFetcher
+from .border_crossings import BorderWaitFetcher
+from .mastodon_osint import MastodonOSINTFetcher
+from .space_launches import SpaceLaunchFetcher
+from .protests import ProtestFetcher
+from .critical_infrastructure import CriticalInfrastructureFetcher
+from .deforestation import DeforestationFetcher
+from .n2yo_satellites import N2YOSatelliteFetcher
 
 __all__ = [
     "BaseFetcher", "FetcherRegistry",
@@ -50,4 +64,9 @@ __all__ = [
     "GeoConfirmedFetcher", "UnderseaCableFetcher", "LiveStreamFetcher",
     "RedditOSINTFetcher", "EquipmentLossFetcher", "InternetOutageFetcher",
     "GPSJammingFetcher", "EONETFetcher",
+    "SpaceWeatherFetcher", "AirQualityFetcher", "CycloneFetcher",
+    "VolcanoFetcher", "AsteroidFetcher", "RadiosondeFetcher",
+    "DiseaseOutbreakFetcher", "BorderWaitFetcher", "MastodonOSINTFetcher",
+    "SpaceLaunchFetcher", "ProtestFetcher", "CriticalInfrastructureFetcher",
+    "DeforestationFetcher", "N2YOSatelliteFetcher",
 ]

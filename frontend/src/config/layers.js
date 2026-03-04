@@ -35,6 +35,20 @@ export const LAYERS = {
   internet_outages:{ label: 'Net Outages',      group: 'Infrastructure',  color: '#7c3aed', refreshMs: 900000 },
   gps_jamming:     { label: 'GPS Jamming',      group: 'Security',        color: '#e11d48', refreshMs: 3600000 },
   natural_events:  { label: 'Natural Events',   group: 'Environmental',   color: '#ff6b35', refreshMs: 1800000 },
+  space_weather:   { label: 'Space Weather',   group: 'Space',           color: '#c084fc', refreshMs: 300000 },
+  air_quality:     { label: 'Air Quality',     group: 'Environmental',   color: '#4ade80', refreshMs: 1800000 },
+  cyclones:        { label: 'Cyclones',        group: 'Environmental',   color: '#38bdf8', refreshMs: 600000 },
+  volcanoes:       { label: 'Volcanoes',       group: 'Environmental',   color: '#ef4444', refreshMs: 1800000 },
+  asteroids:       { label: 'Asteroids/NEOs',  group: 'Space',           color: '#fbbf24', refreshMs: 86400000 },
+  radiosondes:     { label: 'Radiosondes',     group: 'Space',           color: '#67e8f9', refreshMs: 120000 },
+  disease_outbreaks:{ label: 'Disease Outbreaks', group: 'Humanitarian', color: '#f472b6', refreshMs: 3600000 },
+  border_crossings:{ label: 'Border Waits',    group: 'Infrastructure',  color: '#a3e635', refreshMs: 600000 },
+  mastodon_osint:  { label: 'Mastodon OSINT',  group: 'Intelligence',    color: '#6366f1', refreshMs: 600000 },
+  space_launches:  { label: 'Space Launches', group: 'Space',           color: '#f59e0b', refreshMs: 300000 },
+  protests:        { label: 'Protests',       group: 'Security',        color: '#f97316', refreshMs: 600000 },
+  critical_infrastructure: { label: 'Infrastructure', group: 'Infrastructure', color: '#94a3b8', refreshMs: 3600000 },
+  deforestation:   { label: 'Deforestation',  group: 'Environmental',   color: '#22c55e', refreshMs: 1800000 },
+  n2yo_satellites: { label: 'N2YO Satellites', group: 'Space',          color: '#60a5fa', refreshMs: 60000 },
 }
 
 export const PRESETS = [
